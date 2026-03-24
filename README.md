@@ -163,10 +163,20 @@ stellar-cross-border-payments-sdk/
 │   │   ├── components/   # Payment UI components
 │   │   └── hooks/        # React hooks
 │   └── package.json
+├── cli/                   # CLI tool (stellar-payout)
+│   ├── src/
+│   │   ├── commands/     # batch, status, retry, report
+│   │   ├── parsers/      # CSV, JSON, XLSX, MT103
+│   │   ├── utils/        # Database, validation, logger
+│   │   ├── types.ts      # CLI type definitions
+│   │   └── index.ts      # CLI entry point
+│   └── package.json
 ├── examples/              # Usage examples
 │   ├── usd-to-mxn.ts     # US to Mexico remittance
 │   ├── eur-to-usd.ts     # Europe to US business payment
-│   └── escrow-dispute.ts # Dispute resolution
+│   ├── escrow-dispute.ts # Dispute resolution
+│   ├── payroll-batch.csv  # 50-employee payroll sample
+│   └── aid-disbursement.ts # UNHCR-style rapid response
 └── README.md
 ```
 
@@ -397,6 +407,111 @@ This example demonstrates:
 - Evidence collection
 - Admin resolution
 - Refund processing
+
+## 💻 CLI Tool (stellar-payout)
+
+A purpose-built CLI for processing batch cross-border payments, designed for humanitarian aid organizations, global payroll providers, and neobanks.
+
+### Installation
+
+```bash
+# Install globally via npm
+cd cli
+npm install
+npm run build
+npm link
+
+# Or run directly
+npx stellar-payout --help
+```
+
+### Commands
+
+#### `stellar-payout batch` - Process Batch Payments
+
+```bash
+# Process payments from CSV
+stellar-payout batch --input payments.csv --source-secret $SECRET_KEY --network testnet
+
+# Dry-run mode (simulate without submitting)
+stellar-payout batch --input payments.csv --source-secret $SECRET_KEY --dry-run
+
+# Process from JSON
+stellar-payout batch --input payments.json --format json --source-secret $SECRET_KEY
+
+# Process from Excel
+stellar-payout batch --input payments.xlsx --format xlsx --source-secret $SECRET_KEY
+
+# Process SWIFT MT103 messages
+stellar-payout batch --input transfers.mt103 --format mt103 --source-secret $SECRET_KEY
+
+# Advanced options
+stellar-payout batch --input payments.csv --source-secret $SECRET_KEY \
+  --max-ops 100 \
+  --concurrency 5 \
+  --fee-surge-threshold 100 \
+  --network testnet
+```
+
+#### `stellar-payout status` - Real-Time Monitoring
+
+```bash
+# Show recent batches
+stellar-payout status
+
+# Monitor specific batch
+stellar-payout status --batch-id <batch_id>
+
+# Stream real-time updates via Horizon
+stellar-payout status --batch-id <batch_id> --follow
+```
+
+#### `stellar-payout retry` - Retry Failed Transactions
+
+```bash
+# Retry with exponential backoff
+stellar-payout retry --batch-id <batch_id> --source-secret $SECRET_KEY
+
+# Custom retry parameters
+stellar-payout retry --batch-id <batch_id> --source-secret $SECRET_KEY \
+  --max-retries 5 \
+  --backoff-base 2000 \
+  --backoff-max 60000
+```
+
+#### `stellar-payout report` - Compliance Audit Trail
+
+```bash
+# Generate CSV report
+stellar-payout report --batch-id <batch_id> --format csv
+
+# Generate PDF report
+stellar-payout report --batch-id <batch_id> --format pdf
+
+# Custom output path
+stellar-payout report --batch-id <batch_id> --format pdf --output audit-report.pdf
+```
+
+### Input File Format (CSV)
+
+```csv
+destination,amount,asset,memo,escrow_duration
+GBDEVU63Y6...,1500.00,USDC,payroll-001,86400
+GCFONE23AB...,1200.00,EURC,payroll-002,86400
+```
+
+### Key Features
+
+- **Transaction Batching**: Groups up to 100 payments per ledger transaction (Stellar's 100 op limit)
+- **Fee Optimization**: Uses FEE_BUMP transactions for sender abstraction
+- **Parallel Submission**: Concurrent channels for independent destination corridors
+- **Smart Queuing**: Pauses if network congestion (fee surge pricing >100 stroops)
+- **Crash Recovery**: SQLite-backed state persistence for interrupted batches
+- **Emergency Stop**: SIGINT handling with graceful pause and state preservation
+- **Address Validation**: Checks destination exists + trustline before submission
+- **Dry-Run Mode**: Simulate all transactions without submission
+- **Multi-Format Input**: CSV, JSON, Excel (.xlsx), SWIFT MT103
+- **Compliance Reports**: PDF and CSV audit trail generation
 
 ## ⚙️ Configuration
 
