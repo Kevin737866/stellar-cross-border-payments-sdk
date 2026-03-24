@@ -6,6 +6,7 @@ export interface PaymentRecord {
   destination: string;
   amount: string;
   asset: string;
+  asset_issuer: string;
   memo: string;
   escrow_duration: number;
 }

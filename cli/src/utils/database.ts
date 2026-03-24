@@ -42,6 +42,7 @@ export class BatchDatabase {
         destination TEXT NOT NULL,
         amount TEXT NOT NULL,
         asset TEXT NOT NULL,
+        asset_issuer TEXT NOT NULL DEFAULT '',
         memo TEXT NOT NULL DEFAULT '',
         escrow_duration INTEGER NOT NULL DEFAULT 0,
         status TEXT NOT NULL DEFAULT 'pending',
@@ -149,19 +150,19 @@ export class BatchDatabase {
 
   insertEntry(batchId: string, entry: BatchPaymentEntry): void {
     this.db.prepare(`
-      INSERT INTO payment_entries (batch_id, entry_index, destination, amount, asset, memo, escrow_duration, status, batch_group)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(batchId, entry.index, entry.destination, entry.amount, entry.asset, entry.memo, entry.escrow_duration, entry.status, entry.batchGroup);
+      INSERT INTO payment_entries (batch_id, entry_index, destination, amount, asset, asset_issuer, memo, escrow_duration, status, batch_group)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(batchId, entry.index, entry.destination, entry.amount, entry.asset, entry.asset_issuer, entry.memo, entry.escrow_duration, entry.status, entry.batchGroup);
   }
 
   insertEntries(batchId: string, entries: BatchPaymentEntry[]): void {
     const insert = this.db.prepare(`
-      INSERT INTO payment_entries (batch_id, entry_index, destination, amount, asset, memo, escrow_duration, status, batch_group)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO payment_entries (batch_id, entry_index, destination, amount, asset, asset_issuer, memo, escrow_duration, status, batch_group)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const transaction = this.db.transaction((items: BatchPaymentEntry[]) => {
       for (const entry of items) {
-        insert.run(batchId, entry.index, entry.destination, entry.amount, entry.asset, entry.memo, entry.escrow_duration, entry.status, entry.batchGroup);
+        insert.run(batchId, entry.index, entry.destination, entry.amount, entry.asset, entry.asset_issuer, entry.memo, entry.escrow_duration, entry.status, entry.batchGroup);
       }
     });
     transaction(entries);
@@ -195,6 +196,7 @@ export class BatchDatabase {
       destination: row.destination as string,
       amount: row.amount as string,
       asset: row.asset as string,
+      asset_issuer: (row.asset_issuer as string) || '',
       memo: row.memo as string,
       escrow_duration: row.escrow_duration as number,
       status: row.status as BatchEntryStatus,
@@ -216,6 +218,7 @@ export class BatchDatabase {
       destination: row.destination as string,
       amount: row.amount as string,
       asset: row.asset as string,
+      asset_issuer: (row.asset_issuer as string) || '',
       memo: row.memo as string,
       escrow_duration: row.escrow_duration as number,
       status: row.status as BatchEntryStatus,

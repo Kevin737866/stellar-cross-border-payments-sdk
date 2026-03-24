@@ -20,6 +20,7 @@ export function parseCSV(filePath: string): PaymentRecord[] {
     destination: String(row.destination || ''),
     amount: String(row.amount || '0'),
     asset: String(row.asset || 'XLM'),
+    asset_issuer: String(row.asset_issuer || ''),
     memo: String(row.memo || ''),
     escrow_duration: Number(row.escrow_duration) || 0,
   }));
