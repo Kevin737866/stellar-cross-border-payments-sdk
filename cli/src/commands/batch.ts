@@ -28,6 +28,30 @@ let emergencyStop = false;
 let currentDb: BatchDatabase | null = null;
 let currentBatchId: string | null = null;
 
+/**
+ * SequenceAllocator serializes sequence number allocation for parallel groups.
+ * Each group acquires a unique sequence number before building its transaction,
+ * preventing tx_bad_seq errors when groups run concurrently.
+ */
+class SequenceAllocator {
+  private nextSequence: bigint;
+  private mutex: Promise<void> = Promise.resolve();
+
+  constructor(currentSequence: string) {
+    this.nextSequence = BigInt(currentSequence);
+  }
+
+  async allocate(): Promise<string> {
+    return new Promise<string>((resolve) => {
+      this.mutex = this.mutex.then(() => {
+        this.nextSequence++;
+        const seq = (this.nextSequence - BigInt(1)).toString();
+        resolve(seq);
+      });
+    });
+  }
+}
+
 function setupSignalHandlers(): void {
   const handleSignal = (signal: string) => {
     logger.warn(`\nReceived ${signal}. Initiating graceful shutdown...`);
@@ -144,6 +168,7 @@ export async function executeBatch(config: BatchConfig): Promise<void> {
         destination: record.destination,
         amount: record.amount,
         asset: record.asset,
+        asset_issuer: record.asset_issuer || '',
         memo: record.memo,
         escrow_duration: record.escrow_duration,
         status: BatchEntryStatus.Pending,
@@ -161,6 +186,21 @@ export async function executeBatch(config: BatchConfig): Promise<void> {
   // Process groups
   const networkPassphrase = config.networkPassphrase || getNetworkPassphrase(config.network);
   let processedGroups = 0;
+
+  // Fetch initial sequence number for the source account
+  let sequenceAllocator: SequenceAllocator;
+  try {
+    const accountResponse = await axios.get(
+      `${config.horizonUrl}/accounts/${sourcePublicKey}`,
+      { timeout: 15000 }
+    );
+    sequenceAllocator = new SequenceAllocator(accountResponse.data.sequence);
+  } catch (err) {
+    logger.error(`Failed to fetch source account: ${err instanceof Error ? err.message : String(err)}`);
+    db.updateBatchStatus(batchId, BatchStatus.Failed);
+    db.close();
+    return;
+  }
 
   // Parallel processing with concurrency control
   const semaphore = new Semaphore(config.concurrency);
@@ -187,7 +227,8 @@ export async function executeBatch(config: BatchConfig): Promise<void> {
         sourceKeypair,
         config,
         networkPassphrase,
-        db
+        db,
+        sequenceAllocator
       );
 
       processedGroups++;
@@ -248,7 +289,8 @@ async function processGroup(
   sourceKeypair: Keypair,
   config: BatchConfig,
   networkPassphrase: string,
-  db: BatchDatabase
+  db: BatchDatabase,
+  sequenceAllocator: SequenceAllocator
 ): Promise<void> {
   const txGroup: TransactionGroup = {
     groupIndex: groupIdx,
@@ -261,12 +303,9 @@ async function processGroup(
   };
 
   try {
-    // Fetch source account
-    const accountResponse = await axios.get(
-      `${config.horizonUrl}/accounts/${sourceKeypair.publicKey()}`,
-      { timeout: 15000 }
-    );
-    const sourceAccount = new Account(sourceKeypair.publicKey(), accountResponse.data.sequence);
+    // Allocate a unique sequence number for this group (prevents tx_bad_seq with concurrent groups)
+    const sequence = await sequenceAllocator.allocate();
+    const sourceAccount = new Account(sourceKeypair.publicKey(), sequence);
 
     // Build transaction with multiple operations
     const fee = String(Math.max(parseInt(BASE_FEE, 10) * records.length, config.maxFee));
@@ -283,7 +322,7 @@ async function processGroup(
     for (const record of records) {
       const asset = record.asset === 'XLM' || record.asset === 'native'
         ? Asset.native()
-        : new Asset(record.asset, sourceKeypair.publicKey());
+        : new Asset(record.asset, record.asset_issuer || sourceKeypair.publicKey());
 
       builder.addOperation(
         Operation.payment({

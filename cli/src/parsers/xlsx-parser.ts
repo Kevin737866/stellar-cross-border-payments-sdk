@@ -5,6 +5,7 @@ interface XLSXRow {
   destination?: string;
   amount?: string | number;
   asset?: string;
+  asset_issuer?: string;
   memo?: string;
   escrow_duration?: string | number;
 }
@@ -19,6 +20,7 @@ export function parseXLSX(filePath: string): PaymentRecord[] {
     destination: String(row.destination || ''),
     amount: String(row.amount || '0'),
     asset: String(row.asset || 'XLM'),
+    asset_issuer: String(row.asset_issuer || ''),
     memo: String(row.memo || ''),
     escrow_duration: Number(row.escrow_duration) || 0,
   }));

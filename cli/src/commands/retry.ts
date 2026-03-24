@@ -113,7 +113,7 @@ async function retryEntry(
 
     const asset = entry.asset === 'XLM' || entry.asset === 'native'
       ? Asset.native()
-      : new Asset(entry.asset, sourceKeypair.publicKey());
+      : new Asset(entry.asset, entry.asset_issuer || sourceKeypair.publicKey());
 
     const builder = new TransactionBuilder(sourceAccount, {
       fee: '10000', // Higher fee for retries (fee bump)

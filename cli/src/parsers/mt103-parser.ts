@@ -98,6 +98,7 @@ function convertMT103ToPayment(msg: MT103Message): PaymentRecord {
     destination: msg.beneficiaryCustomer,
     amount: msg.amount,
     asset: assetMap[msg.currency] || msg.currency || 'USDC',
+    asset_issuer: '',
     memo: msg.remittanceInfo || msg.transactionRef || '',
     escrow_duration: 86400, // Default 24h escrow for SWIFT transfers
   };
