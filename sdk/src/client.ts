@@ -12,6 +12,7 @@ import {
   xdr,
   StrKey,
   Address,
+  Horizon,
 } from 'stellar-sdk';
 import { AxiosInstance, default as axios } from 'axios';
 import BigNumber from 'bignumber.js';
@@ -250,6 +251,10 @@ export class StellarClient {
 
   getComplianceContract(): Contract {
     return new Contract(this.contracts.compliance);
+  }
+
+  getHorizon(): Horizon.Server {
+    return new Horizon.Server(this.config.horizonUrl);
   }
 
   createKeyPair(): Keypair {
