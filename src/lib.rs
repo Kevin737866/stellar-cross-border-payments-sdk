@@ -1,7 +1,12 @@
+pub mod anchor;
+pub mod compliance;
 pub mod escrow;
 pub mod rate_oracle;
-pub mod compliance;
 
-pub use escrow::{EscrowContract, EscrowStatus, Escrow, Dispute};
-pub use rate_oracle::{RateOracleContract, ExchangeRate, RateSource, AggregatedRate};
-pub use compliance::{ComplianceContract, ComplianceLevel, RiskLevel, ComplianceRecord, TransactionRule, ComplianceCheck};
+pub use anchor::{AnchorInfo, AnchorRegistry, DepositInfo, KycRequirement};
+pub use compliance::{
+    ComplianceCheck, ComplianceContract, ComplianceLevel, ComplianceRecord, RiskLevel,
+    TransactionRule,
+};
+pub use escrow::{Dispute, Escrow, EscrowContract, EscrowStatus};
+pub use rate_oracle::{AggregatedRate, ExchangeRate, RateOracleContract, RateSource};
