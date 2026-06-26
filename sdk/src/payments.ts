@@ -3,7 +3,7 @@ import {
   nativeToScVal,
   scValToNative,
   Address,
-} from '@stellar/stellar-sdk';
+} from 'stellar-sdk';
 import { MetadataRecord, MetadataValue } from './types';
 
 // ─── Primitive converters ────────────────────────────────────────────────────
