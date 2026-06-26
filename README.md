@@ -338,13 +338,13 @@ import { ExchangeRateDisplay } from '@stellar-cross-border/ui';
 ```
 
 ### useStellarPayment Hook
+A powerful React hook for managing the entire lifecycle of a Stellar cross-border payment.
 
-React hook for payment state management:
-
+#### Usage
 ```typescript
 import { useStellarPayment } from '@stellar-cross-border/ui';
 
-const MyComponent = () => {
+const MyComponent = ({ sdk, escrowId }) => {
   const {
     loading,
     error,
@@ -354,17 +354,48 @@ const MyComponent = () => {
     refreshStatus,
   } = useStellarPayment(sdk, escrowId, { autoRefresh: true });
 
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
   return (
     <div>
-      {loading && <div>Loading...</div>}
-      {error && <div>Error: {error}</div>}
-      {paymentStatus && (
-        <div>Status: {paymentStatus.status}</div>
-      )}
+      <p>Status: {paymentStatus?.status}</p>
+      <button onClick={() => releaseEscrow(escrowId, signer)}>Release Payment</button>
     </div>
   );
 };
 ```
+
+#### API Reference
+
+**Inputs:**
+- `sdk`: An instance of `StellarCrossBorderSDK`.
+- `escrowId` (optional): The ID of the escrow to monitor.
+- `options` (optional):
+  - `autoRefresh`: Automatically polls for status updates (default: `true`).
+  - `refreshInterval`: Time between polls in milliseconds (default: `30000`).
+
+**Returns:**
+An object containing:
+
+**State:**
+- `loading`: `boolean` - Indicates if an operation is in progress.
+- `error`: `string | null` - Contains error message if an operation fails.
+- `paymentStatus`: `PaymentStatus | null` - The current status of the payment.
+- `exchangeRate`: `ExchangeRateResult | null` - The latest exchange rate information.
+- `complianceCheck`: `ComplianceCheckResult | null` - The result of the compliance check.
+
+**Actions:**
+- `createPayment(request, options)`: Initiates a new payment.
+- `releaseEscrow(escrowId, signer, options)`: Releases funds from an escrow.
+- `refundEscrow(escrowId, signer, options)`: Refunds an escrow.
+- `disputeEscrow(escrowId, challenger, reason, evidence, signer, options)`: Opens a dispute.
+- `getExchangeRate(request)`: Fetches the latest exchange rate.
+- `checkCompliance(request)`: Performs a compliance check.
+- `getPaymentStatus(escrowId)`: Fetches the status of a specific escrow.
+- `refreshStatus()`: Manually triggers a status refresh.
+- `clearError()`: Resets the error state.
+
 
 ## 📖 Examples
 
