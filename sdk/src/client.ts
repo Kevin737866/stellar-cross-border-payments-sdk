@@ -135,7 +135,7 @@ export class StellarClient {
       feeBump?: boolean;
     } = {}
   ): Promise<TransactionBuilder> {
-    const fee = options.fee || BASE_FEE;
+    const fee = options.fee || (options.feeBump ? '2000' : BASE_FEE);
     const timeout = options.timeout || TimeoutInfinite;
 
     let builder = new TransactionBuilder(sourceAccount, {
