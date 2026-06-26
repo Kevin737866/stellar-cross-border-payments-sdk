@@ -1,3 +1,64 @@
+import { logger } from '../utils/logger';
+
+interface BatchRecord {
+  destination: string;
+  amount: string;
+  asset?: string;
+  [key: string]: unknown;
+}
+
+interface DryRunSummary {
+  totalRows:     number;
+  validRows:     number;
+  invalidRows:   number;
+  invalidDetails: { row: number; reason: string }[];
+  estimatedCost: string;
+}
+
+function validateRecord(record: BatchRecord, index: number) {
+  const errors: string[] = [];
+  if (!record.destination) errors.push('missing destination');
+  if (!record.amount || isNaN(Number(record.amount))) errors.push('invalid amount');
+  return errors.length
+    ? { row: index + 1, reason: errors.join(', ') }
+    : null;
+}
+
+export function dryRunSummary(records: BatchRecord[]): DryRunSummary {
+  const invalidDetails: { row: number; reason: string }[] = [];
+
+  records.forEach((r, i) => {
+    const err = validateRecord(r, i);
+    if (err) invalidDetails.push(err);
+  });
+
+  const validRows = records.length - invalidDetails.length;
+
+  return {
+    totalRows:     records.length,
+    validRows,
+    invalidRows:   invalidDetails.length,
+    invalidDetails,
+    estimatedCost: `~${(validRows * 0.00001).toFixed(5)} XLM base fee`,
+  };
+}
+
+export function printDryRunReport(summary: DryRunSummary) {
+  logger.info('====== DRY-RUN SUMMARY ======');
+  logger.info(`Total rows:      ${summary.totalRows}`);
+  logger.info(`Valid rows:      ${summary.validRows}`);
+  logger.warn(`Invalid rows:    ${summary.invalidRows}`);
+  logger.info(`Estimated cost:  ${summary.estimatedCost}`);
+
+  if (summary.invalidDetails.length > 0) {
+    logger.warn('Invalid row details:');
+    summary.invalidDetails.forEach(d =>
+      logger.warn(`  Row ${d.row}: ${d.reason}`)
+    );
+  }
+  logger.info('=============================');
+}
+
 import {
   Keypair,
   Account,
