@@ -58,8 +58,11 @@ program
       { key: 'complianceContract', envKey: 'COMPLIANCE_CONTRACT_ADDRESS', description: 'Compliance contract address', optName: '--compliance-contract' },
     ]);
 
+    // Normalize an explicitly-provided --format to lowercase so values like
+    // CSV, XLSX, or MT103 match the InputFormat enum. When omitted, the format
+    // is auto-detected from the (case-insensitive) file extension.
     const format = opts.format
-      ? (opts.format as InputFormat)
+      ? (opts.format.toLowerCase() as InputFormat)
       : detectFormat(opts.input);
 
     await executeBatch({

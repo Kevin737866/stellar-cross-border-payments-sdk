@@ -20,7 +20,9 @@ export function parseInputFile(filePath: string, format: InputFormat): PaymentRe
 }
 
 export function detectFormat(filePath: string): InputFormat {
-  const ext = filePath.toLowerCase().split('.').pop();
+  // Normalize the file extension to lowercase before matching so uppercase or
+  // mixed-case extensions (e.g. .CSV, .XLSX, .MT103) are detected correctly.
+  const ext = (filePath.split('.').pop() ?? '').toLowerCase();
   switch (ext) {
     case 'csv':
       return InputFormat.CSV;
