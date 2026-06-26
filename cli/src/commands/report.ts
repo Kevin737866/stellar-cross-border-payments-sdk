@@ -5,6 +5,7 @@ import PDFDocument from 'pdfkit';
 import { ReportOptions, ReportFormat, BatchEntryStatus } from '../types';
 import { BatchDatabase } from '../utils/database';
 import * as logger from '../utils/logger';
+import { defaultReportOutputPath } from '../utils/report';
 
 export async function executeReport(options: ReportOptions): Promise<void> {
   const db = new BatchDatabase(options.dbPath);
@@ -24,7 +25,8 @@ export async function executeReport(options: ReportOptions): Promise<void> {
   logger.info(`Generating ${options.format.toUpperCase()} report for batch ${options.batchId}`);
   logger.info(`Total entries: ${entries.length}`);
 
-  const outputPath = options.outputPath || `stellar-payout-report-${options.batchId}.${options.format}`;
+  const outputPath =
+    options.outputPath || defaultReportOutputPath(options.batchId, options.format);
 
   switch (options.format) {
     case ReportFormat.CSV:

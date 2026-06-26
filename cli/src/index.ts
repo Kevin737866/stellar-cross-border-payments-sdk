@@ -11,10 +11,10 @@ import { detectFormat } from './parsers';
 import {
   InputFormat,
   NetworkType,
-  ReportFormat,
 } from './types';
 import { setLogLevel, LogLevel } from './utils/logger';
 import { validateRequiredOptions } from './utils/validation';
+import { normalizeReportFormat } from './utils/report';
 
 dotenv.config();
 
@@ -152,9 +152,13 @@ program
       setLogLevel(LogLevel.DEBUG);
     }
 
+    // Validate the format up front so an unsupported value fails fast with a
+    // clear message instead of producing a misnamed or empty file.
+    const format = normalizeReportFormat(opts.format);
+
     await executeReport({
       batchId: opts.batchId,
-      format: opts.format as ReportFormat,
+      format,
       outputPath: opts.output || '',
       dbPath: opts.dbPath,
     });
