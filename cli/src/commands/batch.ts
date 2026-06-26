@@ -120,8 +120,10 @@ function setupSignalHandlers(): void {
 
     if (currentDb && currentBatchId) {
       logger.info('Saving batch state for crash recovery...');
-      currentDb.updateBatchStatus(currentBatchId, BatchStatus.Paused);
-      currentDb.updateBatchCounters(currentBatchId);
+      // markBatchPaused is a single atomic SQLite transaction — status + counters
+      // are written together so a secondary crash during shutdown cannot produce
+      // a batch row whose counters don't match its entry rows.
+      currentDb.markBatchPaused(currentBatchId);
       logger.success('Batch state saved. You can resume with: stellar-payout retry --batch-id=' + currentBatchId);
     }
 
@@ -211,9 +213,10 @@ export async function executeBatch(config: BatchConfig): Promise<void> {
   const sourcePublicKey = sourceKeypair.publicKey();
   logger.info(`Source account: ${sourcePublicKey}`);
 
-  // Create batch in database
-  db.createBatch(batchId, valid.length, sourcePublicKey, config.network, config.dryRun);
-  db.updateBatchStatus(batchId, BatchStatus.Running);
+  // Create batch in database — atomically creates the row and sets status to
+  // 'running' in one transaction, eliminating the crash window between
+  // creation and activation.
+  db.initBatch(batchId, valid.length, sourcePublicKey, config.network, config.dryRun);
 
   // Group payments into batches of maxOpsPerTx
   const groups = groupPayments(valid, config.maxOpsPerTx);
@@ -400,12 +403,10 @@ async function processGroup(
       logger.info(`[DRY RUN] Group ${groupIdx}: ${records.length} operations simulated`);
       txGroup.txHash = `dryrun_${crypto.randomBytes(16).toString('hex')}`;
       txGroup.status = BatchEntryStatus.Confirmed;
-      db.insertGroup(batchId, txGroup);
+      db.upsertGroup(batchId, txGroup);
 
-      for (const record of records) {
-        const entryIdx = records.indexOf(record) + groupIdx * config.maxOpsPerTx;
-        db.updateEntryStatus(batchId, entryIdx, BatchEntryStatus.Confirmed, txGroup.txHash);
-      }
+      const entryIndices = records.map((_, i) => i + groupIdx * config.maxOpsPerTx);
+      db.confirmGroupWithEntries(batchId, groupIdx, txGroup.txHash, entryIndices);
       return;
     }
 
@@ -414,11 +415,15 @@ async function processGroup(
     const txXdr = transaction.toXDR();
 
     txGroup.submittedAt = Date.now();
-    db.insertGroup(batchId, txGroup);
+    // upsertGroup is idempotent — safe to call even if a previous run already
+    // inserted a row for this (batchId, groupIdx) pair.
+    db.upsertGroup(batchId, txGroup);
+
+    // Compute entry indices once — reused for atomic confirm / fail calls.
+    const entryIndices = records.map((_, i) => i + groupIdx * config.maxOpsPerTx);
 
     // Mark entries as submitted
-    for (let i = 0; i < records.length; i++) {
-      const entryIdx = i + groupIdx * config.maxOpsPerTx;
+    for (const entryIdx of entryIndices) {
       db.updateEntryStatus(batchId, entryIdx, BatchEntryStatus.Submitted);
     }
 
@@ -426,26 +431,13 @@ async function processGroup(
     const result = await submitWithRetry(txXdr, config.horizonUrl);
 
     if (result.successful) {
-      txGroup.txHash = result.hash;
-      txGroup.status = BatchEntryStatus.Confirmed;
-      txGroup.confirmedAt = Date.now();
-      db.updateGroupStatus(batchId, groupIdx, BatchEntryStatus.Confirmed, result.hash);
-
-      for (let i = 0; i < records.length; i++) {
-        const entryIdx = i + groupIdx * config.maxOpsPerTx;
-        db.updateEntryStatus(batchId, entryIdx, BatchEntryStatus.Confirmed, result.hash);
-      }
-
+      // Atomic: group row + every entry row confirmed together.
+      // A crash between these writes can no longer leave a partial state.
+      db.confirmGroupWithEntries(batchId, groupIdx, result.hash, entryIndices);
       logger.debug(`Group ${groupIdx}: Confirmed (${result.hash})`);
     } else {
-      txGroup.status = BatchEntryStatus.Failed;
-      db.updateGroupStatus(batchId, groupIdx, BatchEntryStatus.Failed);
-
-      for (let i = 0; i < records.length; i++) {
-        const entryIdx = i + groupIdx * config.maxOpsPerTx;
-        db.updateEntryStatus(batchId, entryIdx, BatchEntryStatus.Failed, '', result.error || 'Transaction failed');
-      }
-
+      // Atomic: group row + every entry row failed together.
+      db.failGroupWithEntries(batchId, groupIdx, result.error || 'Transaction failed', entryIndices);
       logger.warn(`Group ${groupIdx}: Failed - ${result.error || 'Unknown error'}`);
     }
   } catch (err) {
@@ -453,12 +445,10 @@ async function processGroup(
     logger.error(`Group ${groupIdx} error: ${errorMsg}`);
 
     txGroup.status = BatchEntryStatus.Failed;
-    db.insertGroup(batchId, txGroup);
+    db.upsertGroup(batchId, txGroup);
 
-    for (let i = 0; i < records.length; i++) {
-      const entryIdx = i + groupIdx * config.maxOpsPerTx;
-      db.updateEntryStatus(batchId, entryIdx, BatchEntryStatus.Failed, '', errorMsg);
-    }
+    const entryIndices = records.map((_, i) => i + groupIdx * config.maxOpsPerTx);
+    db.failGroupWithEntries(batchId, groupIdx, errorMsg, entryIndices);
   }
 }
 

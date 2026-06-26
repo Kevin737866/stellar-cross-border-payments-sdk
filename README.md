@@ -28,6 +28,7 @@ A comprehensive SDK for building cross-border payment applications on the Stella
 - [Examples](#examples)
 - [Configuration](#configuration)
 - [API Reference](#api-reference)
+- [Building](#building)
 - [Testing](#testing)
 - [Deployment](#deployment)
 - [Contributing](#contributing)
@@ -36,8 +37,8 @@ A comprehensive SDK for building cross-border payment applications on the Stella
 
 ### Prerequisites
 - Node.js 18+ 
-- Rust 1.70+ (for contract compilation)
-- Soroban CLI (for contract deployment)
+- Rust 1.78+ (for contract compilation)
+- Stellar CLI 21+ (for contract deployment)
 
 ### Install SDK
 
@@ -46,22 +47,18 @@ A comprehensive SDK for building cross-border payment applications on the Stella
 git clone https://github.com/stellar-cross-border/stellar-cross-border-payments-sdk.git
 cd stellar-cross-border-payments-sdk
 
-# Install dependencies
+# Install all workspace dependencies (sdk + cli + ui) in one step
 npm install
 
-# Install Rust dependencies
-cd src && cargo build
-cd ..
+# Install Rust wasm target
+rustup target add wasm32-unknown-unknown
 ```
 
 ### Environment Setup
 
 ```bash
-# Copy environment template
 cp .env.example .env
-
-# Edit with your configuration
-nano .env
+# Edit .env with your contract addresses and keys — see docs/deployment.md
 ```
 
 ## ⚡ Quick Start
@@ -544,6 +541,50 @@ GCFONE23AB...,1200.00,EURC,payroll-002,86400
 - **Multi-Format Input**: CSV, JSON, Excel (.xlsx), SWIFT MT103
 - **Compliance Reports**: PDF and CSV audit trail generation
 
+### Crash Recovery & Resume
+
+The CLI persists all batch state to a local SQLite database (default: `./stellar-payout.db`).
+Atomicity guarantees ensure the database is never left in a half-written state:
+
+| Operation | Atomicity guarantee |
+|---|---|
+| Batch initialisation | `initBatch()` creates the row **and** sets status `running` in one transaction — no stuck `created` batches |
+| Entry seeding | All payment-entry rows inserted in one transaction — either all exist or none do |
+| Group confirmation | Group row + every entry row set to `confirmed` together — a crash after Horizon confirms but before the write completes leaves entries in `submitted`, not a false `confirmed` |
+| Group failure | Group row + every entry row set to `failed` together |
+| Graceful pause | `SIGINT`/`SIGTERM` atomically sets status `paused` and refreshes all counters |
+
+#### Detecting and resuming stale batches
+
+A batch in `running` or `paused` status at startup indicates an interrupted run:
+
+```ts
+const stale = db.getBatchesNeedingResume();
+// Returns both 'paused' (graceful SIGINT) and 'running' (hard crash) batches
+```
+
+To resume:
+
+```ts
+db.resumeBatch(batchId);                           // status → running, counters refreshed
+const groups = db.getIncompleteGroups(batchId);    // groups not yet confirmed
+for (const group of groups) {
+  const pending = db.getPendingEntriesByGroup(batchId, group.groupIndex);
+  // re-submit pending / submitted entries only — confirmed entries are skipped
+}
+```
+
+From the CLI, resume failed entries with:
+
+```bash
+stellar-payout retry --batch-id <id> --source-secret $SECRET_KEY
+```
+
+The `retry` command re-submits every entry whose status is `failed`.
+For entries stuck in `submitted` (submitted to Horizon but not yet confirmed),
+re-running the batch command with the same `--db-path` will detect the incomplete
+groups via `getIncompleteGroups` and re-check Horizon for their status.
+
 ## ⚙️ Configuration
 
 ### Environment Variables
@@ -564,21 +605,7 @@ ADMIN_SECRET_KEY=YOUR_ADMIN_SECRET_KEY
 ADMIN_PUBLIC_KEY=YOUR_ADMIN_PUBLIC_KEY
 ```
 
-### Contract Deployment
-
-```bash
-# Build contracts
-cd src
-cargo build --target wasm32-unknown-unknown --release
-
-# Deploy escrow contract
-soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/stellar_cross_border_payments_sdk.wasm \
-  --source ADMIN_SECRET_KEY \
-  --network testnet
-
-# Deploy other contracts similarly
-```
+See [docs/deployment.md](docs/deployment.md) for the full list of environment variables and their defaults.
 
 ## 📖 API Reference
 
@@ -637,32 +664,34 @@ interface ComplianceCheckResult extends TransactionResult {
 
 ## 🧪 Testing
 
-### Run Contract Tests
+### Run contract tests
 
 ```bash
-cd src
 cargo test
+# or via root script
+npm run test:contracts
 ```
 
-### Run SDK Tests
+### Run SDK tests
 
 ```bash
-cd sdk
+npm run test:sdk
+# or directly
+cd sdk && npm test
+```
+
+### Run CLI tests
+
+```bash
+npm run test:cli
+# or directly
+cd cli && npm test
+```
+
+### Run all tests
+
+```bash
 npm test
-```
-
-### Run UI Tests
-
-```bash
-cd ui
-npm test
-```
-
-### Integration Tests
-
-```bash
-# Run all examples as tests
-npm run test:examples
 ```
 
 ## Type Safety & Validation
@@ -686,92 +715,124 @@ Metadata must be flat key-value with primitive values only.
 
 ## 🚀 Deployment
 
-### Deploy to Testnet
+See **[docs/deployment.md](docs/deployment.md)** for the complete guide, including:
+
+- Compiling the Soroban contracts to WASM
+- Deploying to testnet and mainnet with Stellar CLI
+- Initialising contract state (admin, restricted jurisdictions, rate sources, compliance records)
+- Wiring contract addresses into the SDK and CLI
+- Example testnet addresses for quick testing
+- Troubleshooting common errors
+
+Quick-start (testnet):
 
 ```bash
-# 1. Deploy contracts
-npm run deploy:testnet
+# 1. Compile contracts
+npm run build:contracts
 
-# 2. Update environment variables
-cp .env.example .env.testnet
-# Edit with testnet contract addresses
+# 2. Generate and fund an admin keypair
+stellar keys generate admin --network testnet
+stellar keys fund admin --network testnet
 
-# 3. Deploy UI
-cd ui
+# 3. Deploy all three contracts
+WASM=target/wasm32-unknown-unknown/release/stellar_cross_border_payments_sdk.wasm
+ESCROW=$(stellar contract deploy --wasm "$WASM" --source admin --network testnet)
+ORACLE=$(stellar contract deploy --wasm "$WASM" --source admin --network testnet)
+COMPLIANCE=$(stellar contract deploy --wasm "$WASM" --source admin --network testnet)
+
+# 4. Write addresses to .env
+echo "ESCROW_CONTRACT_ADDRESS=$ESCROW"        >> .env
+echo "RATE_ORACLE_CONTRACT_ADDRESS=$ORACLE"   >> .env
+echo "COMPLIANCE_CONTRACT_ADDRESS=$COMPLIANCE" >> .env
+
+# 5. Build TypeScript packages
 npm run build
-npm run start
-```
 
-### Deploy to Mainnet
-
-```bash
-# 1. Deploy contracts to mainnet
-npm run deploy:mainnet
-
-# 2. Update production environment
-cp .env.example .env.production
-# Edit with mainnet contract addresses
-
-# 3. Deploy UI to production
-cd ui
-npm run build
-npm run start:prod
+# 6. Run a test batch payment
+stellar-payout batch --input examples/payroll-batch.csv \
+  --source-secret "$ADMIN_SECRET_KEY" --network testnet --dry-run
 ```
 
 ## 🔧 Development
 
-### Build Contracts
+### Watch mode
 
 ```bash
-cd src
-cargo build --target wasm32-unknown-unknown --release
+npm run dev:sdk   # tsc --watch in sdk/
+npm run dev:cli   # tsc --watch in cli/
+npm run dev:ui    # next dev in ui/
 ```
 
-### Build SDK
+### Code style
+
+- Rust: `cargo fmt` and `cargo clippy`
+- TypeScript: ESLint (`npm run lint`) and Prettier
+- React: Follow React best practices
+
+## 🏗 Building
+
+The repo uses npm workspaces. All packages can be built from the root.
+
+### Build all packages
 
 ```bash
-cd sdk
-npm run build
+# Full build: Rust contracts → SDK → CLI → UI
+npm run build:full
+
+# Or build each layer separately
+npm run build:contracts   # cargo build --release --target wasm32-unknown-unknown
+npm run build:sdk         # tsc in sdk/
+npm run build:cli         # tsc in cli/
+npm run build:ui          # next build in ui/
 ```
 
-### Build UI
+### Build scripts (with output summaries)
 
 ```bash
-cd ui
-npm run build
+# Linux / macOS / CI
+./scripts/build.sh
+
+# Windows PowerShell
+.\scripts\build.ps1
+
+# Type-check only (no emit)
+./scripts/build.sh --type-check
+.\scripts\build.ps1 -TypeCheck
+
+# Skip contracts, only build TypeScript
+./scripts/build.sh --ts-only
 ```
 
-### Local Development
+### Build order
+
+The three TypeScript packages must be built in this order:
+
+1. **`sdk/`** — compiled first because the CLI workspace resolves the SDK from `sdk/dist`.
+2. **`cli/`** — depends on `sdk/dist` being present.
+3. **`ui/`** — Next.js build, independent of cli and sdk dist (uses workspace package resolution).
+
+The Rust contracts must be compiled before deploying, but the TypeScript
+packages do not depend on the WASM artefacts at compile time.  Contract
+addresses are supplied at runtime via environment variables.
+
+### Type-check without building
 
 ```bash
-# Start local Soroban RPC
-soroban rpc start
-
-# Run contracts in local mode
-npm run dev:local
-
-# Start UI development server
-cd ui
-npm run dev
+npm run type-check          # all packages
+npm run type-check:sdk
+npm run type-check:cli
+npm run type-check:ui
 ```
 
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-### Development Workflow
-
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
+2. Create a feature branch (`git checkout -b feat/my-change`)
+3. Make your changes and add tests
+4. Run the full build and test suite: `npm run build:full && npm test && cargo test`
 5. Submit a pull request
-
-### Code Style
-
-- Rust: Use `rustfmt` and `clippy`
-- TypeScript: Use ESLint and Prettier
-- React: Follow React best practices
 
 ## 📄 License
 
