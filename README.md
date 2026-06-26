@@ -634,6 +634,25 @@ npm test
 npm run test:examples
 ```
 
+## Type Safety & Validation
+
+All payment requests should be validated before submission:
+
+```ts
+import { validatePaymentRequest } from './src/types';
+
+const request = validatePaymentRequest({
+  sender:   'GABC...',
+  receiver: 'GDEF...',
+  amount:   '100.50',
+  asset:    'USDC',
+});
+```
+
+Branded types (`StellarAddress`, `AmountString`) prevent raw strings from
+being passed where validated values are expected.
+Metadata must be flat key-value with primitive values only.
+
 ## 🚀 Deployment
 
 ### Deploy to Testnet
