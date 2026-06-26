@@ -3,6 +3,32 @@ import { StrKey } from 'stellar-sdk';
 import { PaymentRecord, ValidationResult } from '../types';
 import * as logger from './logger';
 
+export interface RequiredOption {
+  key: string;
+  envKey: string;
+  description: string;
+  optName: string;
+}
+
+export function validateRequiredOptions(
+  opts: any,
+  env: NodeJS.ProcessEnv,
+  requiredOptions: RequiredOption[]
+): void {
+  for (const req of requiredOptions) {
+    const value = opts[req.key];
+    if (!value) {
+      const envValue = env[req.envKey];
+      if (envValue) {
+        opts[req.key] = envValue;
+        logger.warn(`Using ${req.envKey} from environment variables instead of explicit ${req.optName}`);
+      } else {
+        throw new Error(`Missing required configuration. Please provide the following via command line options or environment variables:\n- ${req.optName} (or ${req.envKey})`);
+      }
+    }
+  }
+}
+
 export function validateStellarAddress(address: string): boolean {
   try {
     return StrKey.isValidEd25519PublicKey(address);

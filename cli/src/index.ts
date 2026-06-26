@@ -14,6 +14,7 @@ import {
   ReportFormat,
 } from './types';
 import { setLogLevel, LogLevel } from './utils/logger';
+import { validateRequiredOptions } from './utils/validation';
 
 dotenv.config();
 
@@ -30,7 +31,7 @@ program
   .description('Process batch payments from CSV, JSON, XLSX, or SWIFT MT103 files')
   .requiredOption('-i, --input <file>', 'Input file path (CSV, JSON, XLSX, or MT103)')
   .option('-f, --format <format>', 'Input format: csv, json, xlsx, mt103 (auto-detected from extension)')
-  .requiredOption('-s, --source-secret <key>', 'Source account secret key', process.env.ADMIN_SECRET_KEY)
+  .option('-s, --source-secret <key>', 'Source account secret key (or ADMIN_SECRET_KEY)')
   .option('-n, --network <network>', 'Network: testnet, mainnet, futurenet', 'testnet')
   .option('--horizon-url <url>', 'Horizon URL', process.env.HORIZON_URL || 'https://horizon-testnet.stellar.org')
   .option('--network-passphrase <passphrase>', 'Network passphrase (auto-detected from network)')
@@ -40,15 +41,22 @@ program
   .option('--concurrency <number>', 'Number of concurrent transaction submissions', '5')
   .option('--fee-surge-threshold <number>', 'Fee surge threshold in stroops (pauses if exceeded)', '100')
   .option('--rate-lock-minutes <number>', 'Rate lock window in minutes', '10')
-  .option('--escrow-contract <address>', 'Escrow contract address', process.env.ESCROW_CONTRACT_ADDRESS)
-  .option('--rate-oracle-contract <address>', 'Rate oracle contract address', process.env.RATE_ORACLE_CONTRACT_ADDRESS)
-  .option('--compliance-contract <address>', 'Compliance contract address', process.env.COMPLIANCE_CONTRACT_ADDRESS)
+  .option('--escrow-contract <address>', 'Escrow contract address (or ESCROW_CONTRACT_ADDRESS)')
+  .option('--rate-oracle-contract <address>', 'Rate oracle contract address (or RATE_ORACLE_CONTRACT_ADDRESS)')
+  .option('--compliance-contract <address>', 'Compliance contract address (or COMPLIANCE_CONTRACT_ADDRESS)')
   .option('--db-path <path>', 'SQLite database path for crash recovery', './stellar-payout.db')
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (opts) => {
     if (opts.verbose) {
       setLogLevel(LogLevel.DEBUG);
     }
+
+    validateRequiredOptions(opts, process.env, [
+      { key: 'sourceSecret', envKey: 'ADMIN_SECRET_KEY', description: 'Source account secret key', optName: '--source-secret' },
+      { key: 'escrowContract', envKey: 'ESCROW_CONTRACT_ADDRESS', description: 'Escrow contract address', optName: '--escrow-contract' },
+      { key: 'rateOracleContract', envKey: 'RATE_ORACLE_CONTRACT_ADDRESS', description: 'Rate oracle contract address', optName: '--rate-oracle-contract' },
+      { key: 'complianceContract', envKey: 'COMPLIANCE_CONTRACT_ADDRESS', description: 'Compliance contract address', optName: '--compliance-contract' },
+    ]);
 
     const format = opts.format
       ? (opts.format as InputFormat)
@@ -101,7 +109,7 @@ program
   .command('retry')
   .description('Automatically resubmit failed transactions with exponential backoff')
   .requiredOption('-b, --batch-id <id>', 'Batch ID to retry failed entries')
-  .requiredOption('-s, --source-secret <key>', 'Source account secret key', process.env.ADMIN_SECRET_KEY)
+  .option('-s, --source-secret <key>', 'Source account secret key (or ADMIN_SECRET_KEY)')
   .option('--max-retries <number>', 'Maximum retry attempts per entry', '3')
   .option('--backoff-base <ms>', 'Base backoff delay in milliseconds', '1000')
   .option('--backoff-max <ms>', 'Maximum backoff delay in milliseconds', '30000')
@@ -113,6 +121,10 @@ program
     if (opts.verbose) {
       setLogLevel(LogLevel.DEBUG);
     }
+
+    validateRequiredOptions(opts, process.env, [
+      { key: 'sourceSecret', envKey: 'ADMIN_SECRET_KEY', description: 'Source account secret key', optName: '--source-secret' },
+    ]);
 
     await executeRetry({
       batchId: opts.batchId,
