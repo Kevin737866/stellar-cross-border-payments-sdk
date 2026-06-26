@@ -149,7 +149,8 @@ export interface ContractAddresses {
 export interface TransactionResult {
   hash: string;
   success: boolean;
-  result?: any;
+  /** Raw Horizon/Soroban response. Typed as unknown; narrow before use. */
+  result?: unknown;
   error?: string;
 }
 
@@ -227,11 +228,12 @@ export interface TransactionMetadata {
 export interface ErrorInfo {
   code: string;
   message: string;
-  details?: any;
+  /** Additional error context from the API; narrow before use. */
+  details?: unknown;
   transactionResult?: xdr.TransactionResult;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: ErrorInfo;
