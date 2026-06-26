@@ -13,12 +13,12 @@ import {
   ComplianceCheckResult
 } from '@stellar-cross-border/sdk';
 
-interface UseStellarPaymentOptions {
+export interface UseStellarPaymentOptions {
   autoRefresh?: boolean;
   refreshInterval?: number;
 }
 
-interface StellarPaymentState {
+export interface StellarPaymentState {
   loading: boolean;
   error: string | null;
   paymentStatus: PaymentStatus | null;
@@ -26,7 +26,7 @@ interface StellarPaymentState {
   complianceCheck: ComplianceCheckResult | null;
 }
 
-interface StellarPaymentActions {
+export interface StellarPaymentActions {
   createPayment: (request: PaymentRequest, options?: PaymentOptions) => Promise<EscrowCreationResult>;
   releaseEscrow: (escrowId: string, signer: any, options?: PaymentOptions) => Promise<TransactionResult>;
   refundEscrow: (escrowId: string, signer: any, options?: PaymentOptions) => Promise<TransactionResult>;
