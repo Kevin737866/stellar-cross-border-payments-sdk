@@ -15,8 +15,17 @@ import {
 } from './types';
 import { setLogLevel, LogLevel } from './utils/logger';
 import { validateRequiredOptions } from './utils/validation';
+import { envDefault } from './utils/env';
 
 dotenv.config();
+
+// Built-in fallbacks used when neither a CLI flag nor an environment variable is
+// provided. Kept here so every command shares the same defaults.
+const DEFAULT_HORIZON_URL = 'https://horizon-testnet.stellar.org';
+const DEFAULT_NETWORK = 'testnet';
+const DEFAULT_NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
+const DEFAULT_MAX_FEE = '10000';
+const DEFAULT_DB_PATH = './stellar-payout.db';
 
 const program = new Command();
 
@@ -32,19 +41,19 @@ program
   .requiredOption('-i, --input <file>', 'Input file path (CSV, JSON, XLSX, or MT103)')
   .option('-f, --format <format>', 'Input format: csv, json, xlsx, mt103 (auto-detected from extension)')
   .option('-s, --source-secret <key>', 'Source account secret key (or ADMIN_SECRET_KEY)')
-  .option('-n, --network <network>', 'Network: testnet, mainnet, futurenet', 'testnet')
-  .option('--horizon-url <url>', 'Horizon URL', process.env.HORIZON_URL || 'https://horizon-testnet.stellar.org')
-  .option('--network-passphrase <passphrase>', 'Network passphrase (auto-detected from network)')
+  .option('-n, --network <network>', 'Network: testnet, mainnet, futurenet (or STELLAR_NETWORK)', envDefault('STELLAR_NETWORK', DEFAULT_NETWORK))
+  .option('--horizon-url <url>', 'Horizon URL (or HORIZON_URL)', envDefault('HORIZON_URL', DEFAULT_HORIZON_URL))
+  .option('--network-passphrase <passphrase>', 'Network passphrase (or NETWORK_PASSPHRASE)', envDefault('NETWORK_PASSPHRASE', DEFAULT_NETWORK_PASSPHRASE))
   .option('--dry-run', 'Simulate transactions without submitting', false)
   .option('--max-ops <number>', 'Maximum operations per transaction (max 100)', '100')
-  .option('--max-fee <number>', 'Maximum fee in stroops', '10000')
+  .option('--max-fee <number>', 'Maximum fee in stroops (or MAX_FEE)', envDefault('MAX_FEE', DEFAULT_MAX_FEE))
   .option('--concurrency <number>', 'Number of concurrent transaction submissions', '5')
   .option('--fee-surge-threshold <number>', 'Fee surge threshold in stroops (pauses if exceeded)', '100')
   .option('--rate-lock-minutes <number>', 'Rate lock window in minutes', '10')
   .option('--escrow-contract <address>', 'Escrow contract address (or ESCROW_CONTRACT_ADDRESS)')
   .option('--rate-oracle-contract <address>', 'Rate oracle contract address (or RATE_ORACLE_CONTRACT_ADDRESS)')
   .option('--compliance-contract <address>', 'Compliance contract address (or COMPLIANCE_CONTRACT_ADDRESS)')
-  .option('--db-path <path>', 'SQLite database path for crash recovery', './stellar-payout.db')
+  .option('--db-path <path>', 'SQLite database path for crash recovery (or DB_PATH)', envDefault('DB_PATH', DEFAULT_DB_PATH))
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (opts) => {
     if (opts.verbose) {
@@ -88,8 +97,8 @@ program
   .description('Real-time monitoring of batch payment status with Horizon streaming')
   .option('-b, --batch-id <id>', 'Batch ID to monitor (shows recent batches if omitted)')
   .option('-f, --follow', 'Stream real-time updates', false)
-  .option('--horizon-url <url>', 'Horizon URL', process.env.HORIZON_URL || 'https://horizon-testnet.stellar.org')
-  .option('--db-path <path>', 'SQLite database path', './stellar-payout.db')
+  .option('--horizon-url <url>', 'Horizon URL (or HORIZON_URL)', envDefault('HORIZON_URL', DEFAULT_HORIZON_URL))
+  .option('--db-path <path>', 'SQLite database path (or DB_PATH)', envDefault('DB_PATH', DEFAULT_DB_PATH))
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (opts) => {
     if (opts.verbose) {
@@ -113,9 +122,9 @@ program
   .option('--max-retries <number>', 'Maximum retry attempts per entry', '3')
   .option('--backoff-base <ms>', 'Base backoff delay in milliseconds', '1000')
   .option('--backoff-max <ms>', 'Maximum backoff delay in milliseconds', '30000')
-  .option('--horizon-url <url>', 'Horizon URL', process.env.HORIZON_URL || 'https://horizon-testnet.stellar.org')
-  .option('--network-passphrase <passphrase>', 'Network passphrase', process.env.NETWORK_PASSPHRASE || 'Test SDF Network ; September 2015')
-  .option('--db-path <path>', 'SQLite database path', './stellar-payout.db')
+  .option('--horizon-url <url>', 'Horizon URL (or HORIZON_URL)', envDefault('HORIZON_URL', DEFAULT_HORIZON_URL))
+  .option('--network-passphrase <passphrase>', 'Network passphrase (or NETWORK_PASSPHRASE)', envDefault('NETWORK_PASSPHRASE', DEFAULT_NETWORK_PASSPHRASE))
+  .option('--db-path <path>', 'SQLite database path (or DB_PATH)', envDefault('DB_PATH', DEFAULT_DB_PATH))
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (opts) => {
     if (opts.verbose) {
@@ -145,7 +154,7 @@ program
   .requiredOption('-b, --batch-id <id>', 'Batch ID to generate report for')
   .option('--format <format>', 'Report format: pdf or csv', 'csv')
   .option('-o, --output <path>', 'Output file path (auto-generated if omitted)')
-  .option('--db-path <path>', 'SQLite database path', './stellar-payout.db')
+  .option('--db-path <path>', 'SQLite database path (or DB_PATH)', envDefault('DB_PATH', DEFAULT_DB_PATH))
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (opts) => {
     if (opts.verbose) {
