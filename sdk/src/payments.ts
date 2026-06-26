@@ -1,4 +1,101 @@
 import {
+  xdr,
+  nativeToScVal,
+  scValToNative,
+  Address,
+} from '@stellar/stellar-sdk';
+import { MetadataRecord, MetadataValue } from './types';
+
+// ─── Primitive converters ────────────────────────────────────────────────────
+
+export function toScValString(value: string): xdr.ScVal {
+  return xdr.ScVal.scvString(Buffer.from(value, 'utf8'));
+}
+
+export function toScValU64(value: number | bigint): xdr.ScVal {
+  return nativeToScVal(BigInt(value), { type: 'u64' });
+}
+
+export function toScValI128(value: number | bigint): xdr.ScVal {
+  return nativeToScVal(BigInt(value), { type: 'i128' });
+}
+
+export function toScValBool(value: boolean): xdr.ScVal {
+  return xdr.ScVal.scvBool(value);
+}
+
+export function toScValAddress(address: string): xdr.ScVal {
+  try {
+    return new Address(address).toScVal();
+  } catch {
+    throw new Error(`Cannot convert to SCVal address: "${address}"`);
+  }
+}
+
+// ─── Metadata map converter ──────────────────────────────────────────────────
+
+/**
+ * Converts a flat MetadataRecord to a Soroban SCVal map.
+ * Keys are SCVal strings; values are typed based on their JS type.
+ */
+export function metadataToScVal(metadata: MetadataRecord): xdr.ScVal {
+  const entries = Object.entries(metadata).map(([key, val]) => {
+    const scKey = toScValString(key);
+    const scVal = metadataValueToScVal(key, val);
+    return new xdr.ScMapEntry({ key: scKey, val: scVal });
+  });
+  return xdr.ScVal.scvMap(entries);
+}
+
+function metadataValueToScVal(key: string, value: MetadataValue): xdr.ScVal {
+  switch (typeof value) {
+    case 'string':  return toScValString(value);
+    case 'boolean': return toScValBool(value);
+    case 'number': {
+      if (!Number.isFinite(value)) {
+        throw new Error(`Metadata key "${key}": value must be a finite number.`);
+      }
+      // Use i128 for amounts, u64 for timestamps/counts
+      return Number.isInteger(value)
+        ? toScValU64(value)
+        : toScValI128(Math.round(value * 10_000_000)); // stroop precision
+    }
+    default:
+      throw new Error(`Metadata key "${key}": unsupported type "${typeof value}".`);
+  }
+}
+
+// ─── Round-trip helper ───────────────────────────────────────────────────────
+
+/**
+ * Converts an SCVal map back to a plain MetadataRecord.
+ * Useful for reading contract state.
+ */
+export function scValToMetadata(scVal: xdr.ScVal): MetadataRecord {
+  try {
+    const native = scValToNative(scVal);
+    if (typeof native !== 'object' || native === null) {
+      throw new Error('SCVal is not a map.');
+    }
+    return native as MetadataRecord;
+  } catch (err) {
+    throw new Error(`Failed to convert SCVal to metadata: ${(err as Error).message}`);
+  }
+}
+
+// ─── Optional field helper ───────────────────────────────────────────────────
+
+/**
+ * Wraps a value in SCVal Option (Some/None).
+ * Use for optional contract parameters.
+ */
+export function toScValOption(value: xdr.ScVal | null): xdr.ScVal {
+  return value === null
+    ? xdr.ScVal.scvVoid()
+    : xdr.ScVal.scvVec([xdr.ScVal.scvSymbol('Some'), value]);
+}
+
+import {
   Account,
   Keypair,
   Operation,
