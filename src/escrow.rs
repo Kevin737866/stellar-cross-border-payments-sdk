@@ -1,6 +1,7 @@
 use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol, Vec, Map, BytesN};
 
 #[contracttype]
+
 pub enum EscrowStatus {
     Pending,
     Completed,
@@ -9,6 +10,26 @@ pub enum EscrowStatus {
 }
 
 #[contracttype]
+#[derive(Clone, Debug)]
+pub struct DisputeEvidence {
+    pub dispute_id:   u64,
+    pub submitter:    Address,
+    pub evidence:     Bytes,
+    pub submitted_at: u64,
+    pub description:  Symbol,
+}
+
+const EVIDENCE_KEY: &str = "dispute_evidence";
+
+pub fn store_evidence(env: &Env, dispute_id: u64, evidence: DisputeEvidence) {
+    let key = (Symbol::new(env, EVIDENCE_KEY), dispute_id);
+    env.storage().persistent().set(&key, &evidence);
+}
+
+pub fn get_evidence(env: &Env, dispute_id: u64) -> Option<DisputeEvidence> {
+    let key = (Symbol::new(env, EVIDENCE_KEY), dispute_id);
+    env.storage().persistent().get(&key)
+}
 pub struct Escrow {
     pub id: BytesN<32>,
     pub sender: Address,
@@ -284,5 +305,37 @@ impl EscrowTrait for EscrowContract {
         let user_escrows_key = Symbol::new(&env, &format!("USER_ESCROWS_{}", user));
         env.storage().persistent().get::<_, Vec<BytesN<32>>>(&user_escrows_key)
             .unwrap_or_else(|| Vec::new(&env))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use soroban_sdk::testutils::Address as _;
+
+    #[test]
+    fn test_evidence_stored_and_retrieved() {
+        let env = Env::default();
+        let submitter = Address::generate(&env);
+        let evidence_bytes = Bytes::from_slice(&env, b"proof_hash_abc");
+
+        let evidence = DisputeEvidence {
+            dispute_id:   1,
+            submitter:    submitter.clone(),
+            evidence:     evidence_bytes.clone(),
+            submitted_at: env.ledger().timestamp(),
+            description:  Symbol::new(&env, "payment_proof"),
+        };
+
+        store_evidence(&env, 1, evidence);
+        let retrieved = get_evidence(&env, 1).expect("evidence should exist");
+        assert_eq!(retrieved.dispute_id, 1);
+        assert_eq!(retrieved.evidence, evidence_bytes);
+    }
+
+    #[test]
+    fn test_missing_evidence_returns_none() {
+        let env = Env::default();
+        assert!(get_evidence(&env, 999).is_none());
     }
 }
