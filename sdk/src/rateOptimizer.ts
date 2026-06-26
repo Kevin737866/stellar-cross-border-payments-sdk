@@ -51,8 +51,8 @@ export class RateOptimizer {
     }
 
     // Sort by best rate (highest amount for destination)
-    return quotes.sort((a, b) => 
-      new BigNumber(b.amount).comparedTo(a.amount)
+    return quotes.sort((a, b) =>
+      new BigNumber(b.amount).comparedTo(a.amount) ?? 0
     )[0];
   }
 

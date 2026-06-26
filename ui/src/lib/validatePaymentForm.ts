@@ -40,7 +40,7 @@ export function validatePaymentForm(values: PaymentFormValues): FormErrors {
 
   if (!values.token) {
     errors.token = 'Please select a token.';
-  } else if (!(SUPPORTED_TOKENS as readonly string[])) {
+  } else if (!(SUPPORTED_TOKENS as readonly string[]).includes(values.token)) {
     errors.token = `Unsupported token. Choose one of: ${SUPPORTED_TOKENS.join(', ')}.`;
   }
 

@@ -65,19 +65,38 @@ jobs:
         working-directory: ./ui
         run: npm ci
 
-      - name: Lint
-        run: |
-          cd sdk && npm run lint
-          cd ../cli && npm run lint
-          cd ../ui && npm run lint
+      - name: Lint (SDK)
+        working-directory: ./sdk
+        run: npm run lint
 
-      - name: Test
-        run: |
-          cd sdk && npm test
-          cd ../cli && npm test
+      - name: Lint (CLI)
+        working-directory: ./cli
+        run: npm run lint
 
-      - name: Build
-        run: |
-          cd sdk && npm run build
-          cd ../cli && npm run build
-          cd ../ui && npm run build
+      - name: Lint (UI)
+        working-directory: ./ui
+        run: npm run lint
+
+      - name: Test (SDK)
+        working-directory: ./sdk
+        run: npm test
+
+      - name: Test (CLI)
+        working-directory: ./cli
+        run: npm test
+
+      - name: Test (UI)
+        working-directory: ./ui
+        run: npm test -- --passWithNoTests --forceExit
+
+      - name: Build (SDK)
+        working-directory: ./sdk
+        run: npm run build
+
+      - name: Build (CLI)
+        working-directory: ./cli
+        run: npm run build
+
+      - name: Build (UI)
+        working-directory: ./ui
+        run: npm run build
