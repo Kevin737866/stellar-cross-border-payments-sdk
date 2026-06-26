@@ -33,6 +33,18 @@ export class StellarPayments {
     this.client = client;
   }
 
+  private async buildPaymentTransaction(
+    sourceAccount: Account,
+    operations: Operation[],
+    options: PaymentOptions = {}
+  ) {
+    return this.client.buildTransaction(sourceAccount, operations, {
+      feeBump: options.feeBump,
+      memo: options.memo,
+      timeout: options.timeout,
+    });
+  }
+
   async createPayment(
     request: PaymentRequest,
     options: PaymentOptions = {}
@@ -58,14 +70,10 @@ export class StellarPayments {
         metadataScVal
       );
 
-      const builder = await this.client.buildTransaction(
+      const builder = await this.buildPaymentTransaction(
         sourceAccount,
         [createEscrowOp],
-        {
-          fee: options.feeBump ? '2000' : undefined,
-          memo: options.memo,
-          timeout: options.timeout,
-        }
+        options
       );
 
       const transaction = builder.build();
@@ -118,14 +126,10 @@ export class StellarPayments {
         xdr.ScVal.scvBytes(Buffer.from(escrowId, 'hex'))
       );
 
-      const builder = await this.client.buildTransaction(
+      const builder = await this.buildPaymentTransaction(
         sourceAccount,
         [releaseEscrowOp],
-        {
-          fee: options.feeBump ? '2000' : undefined,
-          memo: options.memo,
-          timeout: options.timeout,
-        }
+        options
       );
 
       const transaction = builder.build();
@@ -162,14 +166,10 @@ export class StellarPayments {
         xdr.ScVal.scvBytes(Buffer.from(escrowId, 'hex'))
       );
 
-      const builder = await this.client.buildTransaction(
+      const builder = await this.buildPaymentTransaction(
         sourceAccount,
         [refundEscrowOp],
-        {
-          fee: options.feeBump ? '2000' : undefined,
-          memo: options.memo,
-          timeout: options.timeout,
-        }
+        options
       );
 
       const transaction = builder.build();
@@ -212,14 +212,10 @@ export class StellarPayments {
         xdr.ScVal.scvBytes(evidence)
       );
 
-      const builder = await this.client.buildTransaction(
+      const builder = await this.buildPaymentTransaction(
         sourceAccount,
         [disputeEscrowOp],
-        {
-          fee: options.feeBump ? '2000' : undefined,
-          memo: options.memo,
-          timeout: options.timeout,
-        }
+        options
       );
 
       const transaction = builder.build();
