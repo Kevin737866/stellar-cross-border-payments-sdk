@@ -116,6 +116,7 @@ program
   .option('--max-retries <number>', 'Maximum retry attempts per entry', '3')
   .option('--backoff-base <ms>', 'Base backoff delay in milliseconds', '1000')
   .option('--backoff-max <ms>', 'Maximum backoff delay in milliseconds', '30000')
+  .option('--max-total-retry-time <ms>', 'Total retry time budget in milliseconds; retries stop once this duration is reached even if attempts remain (0 = no time limit)', '0')
   .option('--horizon-url <url>', 'Horizon URL', process.env.HORIZON_URL || 'https://horizon-testnet.stellar.org')
   .option('--network-passphrase <passphrase>', 'Network passphrase', process.env.NETWORK_PASSPHRASE || 'Test SDF Network ; September 2015')
   .option('--db-path <path>', 'SQLite database path', './stellar-payout.db')
@@ -134,6 +135,7 @@ program
       maxRetries: parseInt(opts.maxRetries, 10),
       backoffBase: parseInt(opts.backoffBase, 10),
       backoffMax: parseInt(opts.backoffMax, 10),
+      maxTotalRetryTime: parseInt(opts.maxTotalRetryTime, 10),
       dbPath: opts.dbPath,
       sourceSecret: opts.sourceSecret,
       horizonUrl: opts.horizonUrl,
