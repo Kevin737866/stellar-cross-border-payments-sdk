@@ -523,6 +523,24 @@ stellar-payout report --batch-id <batch_id> --format pdf
 stellar-payout report --batch-id <batch_id> --format pdf --output audit-report.pdf
 ```
 
+#### Environment variable defaults
+
+Every command resolves its option defaults the same way: an explicit CLI flag
+wins, otherwise the value is read from the environment (including a `.env` file
+loaded at startup), otherwise a built-in default is used.
+
+| CLI flag | Environment variable | Default |
+|---|---|---|
+| `--horizon-url` | `HORIZON_URL` | `https://horizon-testnet.stellar.org` |
+| `--network` | `STELLAR_NETWORK` | `testnet` |
+| `--network-passphrase` | `NETWORK_PASSPHRASE` | `Test SDF Network ; September 2015` |
+| `--max-fee` | `MAX_FEE` | `10000` |
+| `--db-path` | `DB_PATH` | `./stellar-payout.db` |
+| `--source-secret` | `ADMIN_SECRET_KEY` | _(required)_ |
+| `--escrow-contract` | `ESCROW_CONTRACT_ADDRESS` | _(required for batch)_ |
+| `--rate-oracle-contract` | `RATE_ORACLE_CONTRACT_ADDRESS` | _(required for batch)_ |
+| `--compliance-contract` | `COMPLIANCE_CONTRACT_ADDRESS` | _(required for batch)_ |
+
 ### Input File Format (CSV)
 
 ```csv
@@ -553,6 +571,11 @@ GCFONE23AB...,1200.00,EURC,payroll-002,86400
 HORIZON_URL=https://horizon-testnet.stellar.org
 SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
 NETWORK_PASSPHRASE=Test SDF Network ; September 2015
+
+# CLI defaults (optional; override the corresponding --flag)
+STELLAR_NETWORK=testnet
+MAX_FEE=10000
+DB_PATH=./stellar-payout.db
 
 # Contract Addresses
 ESCROW_CONTRACT_ADDRESS=YOUR_ESCROW_CONTRACT_ADDRESS
