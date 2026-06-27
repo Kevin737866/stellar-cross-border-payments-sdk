@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Keypair } from 'stellar-sdk';
 import { StellarCrossBorderSDK } from '@stellar-cross-border/sdk';
-import { 
-  PaymentStatus, 
-  EscrowStatus, 
-  PaymentRequest, 
+import {
+  PaymentStatus,
+  EscrowStatus,
+  PaymentRequest,
   PaymentOptions,
   ExchangeRateRequest,
   ComplianceRequest,
   EscrowCreationResult,
   TransactionResult,
   ExchangeRateResult,
-  ComplianceCheckResult
+  ComplianceCheckResult,
 } from '@stellar-cross-border/sdk';
 
 export interface UseStellarPaymentOptions {
@@ -28,9 +29,9 @@ export interface StellarPaymentState {
 
 export interface StellarPaymentActions {
   createPayment: (request: PaymentRequest, options?: PaymentOptions) => Promise<EscrowCreationResult>;
-  releaseEscrow: (escrowId: string, signer: any, options?: PaymentOptions) => Promise<TransactionResult>;
-  refundEscrow: (escrowId: string, signer: any, options?: PaymentOptions) => Promise<TransactionResult>;
-  disputeEscrow: (escrowId: string, challenger: string, reason: string, evidence: Uint8Array, signer: any, options?: PaymentOptions) => Promise<TransactionResult>;
+  releaseEscrow: (escrowId: string, signer: Keypair, options?: PaymentOptions) => Promise<TransactionResult>;
+  refundEscrow: (escrowId: string, signer: Keypair, options?: PaymentOptions) => Promise<TransactionResult>;
+  disputeEscrow: (escrowId: string, challenger: string, reason: string, evidence: Uint8Array, signer: Keypair, options?: PaymentOptions) => Promise<TransactionResult>;
   getExchangeRate: (request: ExchangeRateRequest) => Promise<ExchangeRateResult>;
   checkCompliance: (request: ComplianceRequest) => Promise<ComplianceCheckResult>;
   getPaymentStatus: (escrowId: string) => Promise<PaymentStatus>;
@@ -106,7 +107,7 @@ export const useStellarPayment = (
 
   const releaseEscrow = useCallback(async (
     id: string,
-    signer: any,
+    signer: Keypair,
     options?: PaymentOptions
   ): Promise<TransactionResult> => {
     try {
@@ -131,7 +132,7 @@ export const useStellarPayment = (
 
   const refundEscrow = useCallback(async (
     id: string,
-    signer: any,
+    signer: Keypair,
     options?: PaymentOptions
   ): Promise<TransactionResult> => {
     try {
@@ -159,7 +160,7 @@ export const useStellarPayment = (
     challenger: string,
     reason: string,
     evidence: Uint8Array,
-    signer: any,
+    signer: Keypair,
     options?: PaymentOptions
   ): Promise<TransactionResult> => {
     try {
