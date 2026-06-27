@@ -1,5 +1,13 @@
 import { Address, xdr } from 'stellar-sdk';
 
+// ─── Metadata helpers ────────────────────────────────────────────────────────
+
+/** Supported value types for SCVal metadata maps */
+export type MetadataValue = string | number | boolean;
+
+/** A flat key-value record where values are convertible to Soroban SCVal */
+export type MetadataRecord = Record<string, MetadataValue>;
+
 export enum EscrowStatus {
   Pending = 'Pending',
   Completed = 'Completed',
