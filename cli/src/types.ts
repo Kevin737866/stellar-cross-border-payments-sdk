@@ -110,6 +110,8 @@ export interface RetryOptions {
   maxRetries: number;
   backoffBase: number;
   backoffMax: number;
+  /** Total retry time budget in milliseconds (0 = no time limit). */
+  maxTotalRetryTime: number;
   dbPath: string;
   sourceSecret: string;
   horizonUrl: string;
