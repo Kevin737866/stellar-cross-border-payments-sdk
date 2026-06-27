@@ -22,11 +22,25 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
+// ── Whitelisted tokens shown in the dropdown ────────────────────────────────
+const COMMON_TOKENS = [
+  { symbol: 'XLM',  name: 'Stellar Lumens', contract: 'native' },
+  { symbol: 'USDC', name: 'USD Coin',        contract: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFLBKYXRH7CL5BJM4A3' },
+  { symbol: 'EURC', name: 'Euro Coin',       contract: 'GDZQJFSYNKSWDYM7KKEGZUPXNBNLAO5FQMJGFJFD7ZMPGA2U6WMR5VY' },
+  { symbol: 'yXLM', name: 'Wrapped XLM',     contract: 'GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55' },
+] as const;
+
+// ── Form field types ────────────────────────────────────────────────────────
 interface PaymentFormData {
   from: string;
   to: string;
   amount: string;
+  /** Either a contract address / 'native', or CUSTOM_ASSET_VALUE sentinel. */
   token: string;
+  /** Only used when token === CUSTOM_ASSET_VALUE */
+  customAssetCode:   string;
+  /** Only used when token === CUSTOM_ASSET_VALUE */
+  customAssetIssuer: string;
   releaseTime: string;
   memo?: string;
   feeBump: boolean;
@@ -108,8 +122,10 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
   } = useForm<PaymentFormData>({
     mode: 'onChange',
     defaultValues: {
-      feeBump: true,
-      releaseTime: '24',
+      feeBump:           true,
+      releaseTime:       '24',
+      customAssetCode:   '',
+      customAssetIssuer: '',
     },
   });
 
@@ -358,6 +374,8 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
                       : ''}
                   </option>
                 ))}
+                {/* Custom asset entry */}
+                <option value={CUSTOM_ASSET_VALUE}>⚙ Custom Asset…</option>
               </select>
               {errors.token && (
                 <p className="mt-1 text-sm text-red-600">

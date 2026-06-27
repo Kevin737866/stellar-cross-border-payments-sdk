@@ -10,6 +10,7 @@ import axios from 'axios';
 import { RetryOptions, BatchEntryStatus, BatchStatus, BatchPaymentEntry } from '../types';
 import { BatchDatabase } from '../utils/database';
 import * as logger from '../utils/logger';
+import { isRetryTimeBudgetExhausted } from '../utils/retry-budget';
 
 export async function executeRetry(options: RetryOptions): Promise<void> {
   const db = new BatchDatabase(options.dbPath);
@@ -33,13 +34,26 @@ export async function executeRetry(options: RetryOptions): Promise<void> {
   logger.info(`Found ${failedEntries.length} failed entries to retry`);
   logger.info(`Max retries per entry: ${options.maxRetries}`);
   logger.info(`Backoff base: ${options.backoffBase}ms`);
+  if (options.maxTotalRetryTime > 0) {
+    logger.info(`Max total retry time: ${options.maxTotalRetryTime}ms`);
+  }
 
   const sourceKeypair = Keypair.fromSecret(options.sourceSecret);
+  const retryStart = Date.now();
   let retried = 0;
   let succeeded = 0;
   let permanentlyFailed = 0;
 
   for (const entry of failedEntries) {
+    // Stop the loop once the total retry time budget is used up, even if
+    // attempts remain. This bounds how long retries run during outages.
+    if (isRetryTimeBudgetExhausted(Date.now() - retryStart, options.maxTotalRetryTime)) {
+      logger.warn(
+        `Max total retry time (${options.maxTotalRetryTime}ms) reached. Stopping with remaining entries left for a later run.`
+      );
+      break;
+    }
+
     if (entry.retryCount >= options.maxRetries) {
       logger.warn(`Entry #${entry.index}: Max retries (${options.maxRetries}) exceeded. Skipping.`);
       db.updateEntryStatus(options.batchId, entry.index, BatchEntryStatus.Skipped);

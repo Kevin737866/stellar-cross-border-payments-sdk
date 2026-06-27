@@ -7,6 +7,7 @@ on:
     branches: [main, master]
 
 jobs:
+  # ── Rust Soroban contracts ──────────────────────────────────────────────────
   rust:
     name: Rust Build & Test
     runs-on: ubuntu-latest
@@ -28,13 +29,14 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Build contracts
-        run: cargo build --release --target wasm32-unknown-unknown
+        run: npm run build:contracts
 
       - name: Run contract tests
-        run: cargo test
+        run: npm run test:contracts
 
+  # ── TypeScript packages ─────────────────────────────────────────────────────
   typescript:
-    name: TypeScript Lint, Test & Build
+    name: TypeScript Lint, Type-Check, Test & Build
     runs-on: ubuntu-latest
     strategy:
       matrix:
