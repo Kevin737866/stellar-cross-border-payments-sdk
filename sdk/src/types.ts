@@ -241,7 +241,13 @@ export interface ErrorInfo {
   transactionResult?: xdr.TransactionResult;
 }
 
-export interface ApiResponse<T = unknown> {
+/** Allowed scalar types for metadata values passed to contracts. */
+export type MetadataValue = string | number | boolean;
+
+/** A flat key/value map used for payment and escrow metadata. */
+export type MetadataRecord = Record<string, MetadataValue>;
+
+export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: ErrorInfo;

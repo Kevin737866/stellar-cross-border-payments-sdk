@@ -130,9 +130,9 @@ export class RateOptimizer {
       throw new Error(`No execution path found for ${fromAsset} -> ${toAsset}`);
     }
 
-    // Sort descending by destination amount; highest first
+    // Sort by best rate (highest amount for destination)
     return quotes.sort((a, b) =>
-      new BigNumber(b.amount).comparedTo(a.amount)
+      new BigNumber(b.amount).comparedTo(a.amount) ?? 0
     )[0];
   }
 

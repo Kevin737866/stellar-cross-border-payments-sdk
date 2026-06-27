@@ -1,10 +1,34 @@
 import {
-  xdr,
+  Account,
+  Address,
+  Contract,
+  Keypair,
+  Operation,
+  ScInt,
+  TransactionBuilder,
   nativeToScVal,
   scValToNative,
-  Address,
+  xdr,
 } from 'stellar-sdk';
-import { MetadataRecord, MetadataValue } from './types';
+import BigNumber from 'bignumber.js';
+import { StellarClient } from './client';
+import {
+  AggregatedRate,
+  ComplianceCheck,
+  ComplianceCheckResult,
+  ComplianceRequest,
+  EscrowCreationResult,
+  EscrowStatus,
+  Escrow,
+  ExchangeRateRequest,
+  ExchangeRateResult,
+  MetadataRecord,
+  MetadataValue,
+  PaymentOptions,
+  PaymentRequest,
+  PaymentStatus,
+  TransactionResult,
+} from './types';
 
 // ─── Primitive converters ────────────────────────────────────────────────────
 
@@ -95,33 +119,7 @@ export function toScValOption(value: xdr.ScVal | null): xdr.ScVal {
     : xdr.ScVal.scvVec([xdr.ScVal.scvSymbol('Some'), value]);
 }
 
-import {
-  Account,
-  Keypair,
-  Operation,
-  TransactionBuilder,
-  xdr,
-  Address,
-  ScInt,
-} from 'stellar-sdk';
-import BigNumber from 'bignumber.js';
-import { StellarClient } from './client';
-import {
-  PaymentRequest,
-  PaymentOptions,
-  EscrowCreationResult,
-  PaymentStatus,
-  ComplianceCheckResult,
-  ExchangeRateResult,
-  TransactionResult,
-  EscrowStatus,
-  ComplianceRequest,
-  ExchangeRateRequest,
-  Escrow,
-  Dispute,
-  ComplianceCheck,
-  AggregatedRate,
-} from './types';
+// ─── StellarPayments class ───────────────────────────────────────────────────
 
 export class StellarPayments {
   private client: StellarClient;
@@ -148,11 +146,11 @@ export class StellarPayments {
   ): Promise<EscrowCreationResult> {
     try {
       const sourceAccount = await this.getSourceAccount(request.from);
-      
+
       const escrowContract = this.client.getEscrowContract();
-      
-      const releaseTime = request.release_time || 
-        Math.floor(Date.now() / 1000) + (24 * 60 * 60); // 24 hours default
+
+      const releaseTime =
+        request.release_time || Math.floor(Date.now() / 1000) + 24 * 60 * 60;
 
       const metadata = request.metadata || {};
       const metadataScVal = this.convertMetadataToScVal(metadata);
@@ -165,7 +163,7 @@ export class StellarPayments {
         new Address(request.token).toScVal(),
         new ScInt(releaseTime).toU64(),
         metadataScVal
-      );
+      ) as unknown as Operation;
 
       const builder = await this.buildPaymentTransaction(
         sourceAccount,
@@ -174,18 +172,15 @@ export class StellarPayments {
       );
 
       const transaction = builder.build();
-      
+
       if (options.submit !== false) {
         const result = await this.client.submitTransaction(transaction.toXDR());
-        
+
         if (result.success && result.result) {
           const escrowId = this.extractEscrowIdFromResult(result.result);
-          return {
-            ...result,
-            escrowId,
-          };
+          return { ...result, escrowId };
         }
-        
+
         return {
           hash: result.hash,
           success: false,
@@ -216,12 +211,12 @@ export class StellarPayments {
   ): Promise<TransactionResult> {
     try {
       const sourceAccount = await this.getSourceAccount(signer.publicKey());
-      
+
       const escrowContract = this.client.getEscrowContract();
       const releaseEscrowOp = escrowContract.call(
         'release_escrow',
         xdr.ScVal.scvBytes(Buffer.from(escrowId, 'hex'))
-      );
+      ) as unknown as Operation;
 
       const builder = await this.buildPaymentTransaction(
         sourceAccount,
@@ -236,10 +231,7 @@ export class StellarPayments {
         return await this.client.submitTransaction(transaction.toXDR());
       }
 
-      return {
-        hash: transaction.hash().toString('hex'),
-        success: true,
-      };
+      return { hash: transaction.hash().toString('hex'), success: true };
     } catch (error) {
       return {
         hash: '',
@@ -256,12 +248,12 @@ export class StellarPayments {
   ): Promise<TransactionResult> {
     try {
       const sourceAccount = await this.getSourceAccount(signer.publicKey());
-      
+
       const escrowContract = this.client.getEscrowContract();
       const refundEscrowOp = escrowContract.call(
         'refund_escrow',
         xdr.ScVal.scvBytes(Buffer.from(escrowId, 'hex'))
-      );
+      ) as unknown as Operation;
 
       const builder = await this.buildPaymentTransaction(
         sourceAccount,
@@ -276,10 +268,7 @@ export class StellarPayments {
         return await this.client.submitTransaction(transaction.toXDR());
       }
 
-      return {
-        hash: transaction.hash().toString('hex'),
-        success: true,
-      };
+      return { hash: transaction.hash().toString('hex'), success: true };
     } catch (error) {
       return {
         hash: '',
@@ -299,15 +288,15 @@ export class StellarPayments {
   ): Promise<TransactionResult> {
     try {
       const sourceAccount = await this.getSourceAccount(signer.publicKey());
-      
+
       const escrowContract = this.client.getEscrowContract();
       const disputeEscrowOp = escrowContract.call(
         'dispute_escrow',
         xdr.ScVal.scvBytes(Buffer.from(escrowId, 'hex')),
         new Address(challenger).toScVal(),
         xdr.ScVal.scvSymbol(reason),
-        xdr.ScVal.scvBytes(evidence)
-      );
+        xdr.ScVal.scvBytes(Buffer.from(evidence))
+      ) as unknown as Operation;
 
       const builder = await this.buildPaymentTransaction(
         sourceAccount,
@@ -322,10 +311,7 @@ export class StellarPayments {
         return await this.client.submitTransaction(transaction.toXDR());
       }
 
-      return {
-        hash: transaction.hash().toString('hex'),
-        success: true,
-      };
+      return { hash: transaction.hash().toString('hex'), success: true };
     } catch (error) {
       return {
         hash: '',
@@ -337,8 +323,6 @@ export class StellarPayments {
 
   async getExchangeRate(request: ExchangeRateRequest): Promise<ExchangeRateResult> {
     try {
-      const rateOracleContract = this.client.getRateOracleContract();
-      
       const rateKey = xdr.ScVal.scvVec([
         xdr.ScVal.scvSymbol(request.from_currency),
         xdr.ScVal.scvSymbol(request.to_currency),
@@ -350,12 +334,16 @@ export class StellarPayments {
       );
 
       if (!rateData) {
-        throw new Error(`Exchange rate not found for ${request.from_currency}/${request.to_currency}`);
+        throw new Error(
+          `Exchange rate not found for ${request.from_currency}/${request.to_currency}`
+        );
       }
 
       const aggregatedRate = this.parseAggregatedRate(rateData);
-      
-      const sources = await this.getRateSources(request.from_currency, request.to_currency);
+      const sources = await this.getRateSources(
+        request.from_currency,
+        request.to_currency
+      );
 
       return {
         rate: aggregatedRate.rate,
@@ -364,16 +352,21 @@ export class StellarPayments {
         aggregated: aggregatedRate,
       };
     } catch (error) {
-      throw new Error(`Failed to get exchange rate: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to get exchange rate: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`
+      );
     }
   }
 
-  async checkCompliance(request: ComplianceRequest): Promise<ComplianceCheckResult> {
+  async checkCompliance(
+    request: ComplianceRequest
+  ): Promise<ComplianceCheckResult> {
     try {
       const complianceContract = this.client.getComplianceContract();
-      
       const transactionId = this.generateTransactionId();
-      
+
       const complianceOp = complianceContract.call(
         'check_transaction_compliance',
         xdr.ScVal.scvBytes(Buffer.from(transactionId, 'hex')),
@@ -385,8 +378,12 @@ export class StellarPayments {
         xdr.ScVal.scvSymbol(request.jurisdiction_to)
       );
 
-      const result = await this.client.simulateTransaction(complianceOp);
-      
+      // simulateTransaction expects an XDR string; serialize the operation
+      const result = await this.client.simulateTransaction(
+        (complianceOp as unknown as { toXDR: () => string }).toXDR?.() ??
+        JSON.stringify(complianceOp)
+      );
+
       if (!result.results || result.results.length === 0) {
         throw new Error('Compliance check returned no results');
       }
@@ -405,7 +402,8 @@ export class StellarPayments {
         hash: '',
         success: false,
         approved: false,
-        reason: error instanceof Error ? error.message : 'Compliance check failed',
+        reason:
+          error instanceof Error ? error.message : 'Compliance check failed',
         rulesTriggered: [],
       };
     }
@@ -415,7 +413,7 @@ export class StellarPayments {
     try {
       const escrow = await this.getEscrow(escrowId);
       const currentTime = Math.floor(Date.now() / 1000);
-      
+
       return {
         escrowId: escrow.id,
         status: escrow.status,
@@ -424,19 +422,24 @@ export class StellarPayments {
         receiver: escrow.receiver,
         created_at: escrow.created_at,
         release_time: escrow.release_time,
-        can_release: escrow.status === EscrowStatus.Pending && currentTime >= escrow.release_time,
+        can_release:
+          escrow.status === EscrowStatus.Pending &&
+          currentTime >= escrow.release_time,
         can_refund: escrow.status === EscrowStatus.Pending,
       };
     } catch (error) {
-      throw new Error(`Failed to get payment status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to get payment status: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`
+      );
     }
   }
 
   async getEscrow(escrowId: string): Promise<Escrow> {
     try {
-      const escrowContract = this.client.getEscrowContract();
       const escrowKey = xdr.ScVal.scvBytes(Buffer.from(escrowId, 'hex'));
-      
+
       const escrowData = await this.client.getContractData(
         this.client.getContracts().escrow,
         escrowKey
@@ -448,29 +451,36 @@ export class StellarPayments {
 
       return this.parseEscrow(escrowData);
     } catch (error) {
-      throw new Error(`Failed to get escrow: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to get escrow: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`
+      );
     }
   }
 
   async getUserEscrows(userAddress: string): Promise<string[]> {
     try {
-      const escrowContract = this.client.getEscrowContract();
       const userKey = xdr.ScVal.scvSymbol(`USER_ESCROWS_${userAddress}`);
-      
+
       const escrowData = await this.client.getContractData(
         this.client.getContracts().escrow,
         userKey
       );
 
-      if (!escrowData) {
-        return [];
-      }
+      if (!escrowData) return [];
 
       return this.parseEscrowList(escrowData);
     } catch (error) {
-      throw new Error(`Failed to get user escrows: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to get user escrows: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`
+      );
     }
   }
+
+  // ── Private helpers ─────────────────────────────────────────────────────────
 
   private async getSourceAccount(accountId: string): Promise<Account> {
     const accountInfo = await this.client.getAccount(accountId);
@@ -478,26 +488,25 @@ export class StellarPayments {
   }
 
   private convertMetadataToScVal(metadata: Record<string, Uint8Array>): xdr.ScVal {
-    const entries = Object.entries(metadata).map(([key, value]) => 
-      xdr.ScVal.scvMap([
-        new xdr.ScMapEntry({
-          key: xdr.ScVal.scvSymbol(key),
-          val: xdr.ScVal.scvBytes(value),
-        }),
-      ])
+    const entries = Object.entries(metadata).map(([key, value]) =>
+      new xdr.ScMapEntry({
+        key: xdr.ScVal.scvSymbol(key),
+        val: xdr.ScVal.scvBytes(Buffer.from(value)),
+      })
     );
-
-    return xdr.ScVal.scvMap(entries.flat());
+    return xdr.ScVal.scvMap(entries);
   }
 
-  private extractEscrowIdFromResult(result: any): string {
-    if (result.result_xdr) {
-      const transactionResult = xdr.TransactionResult.fromXDR(result.result_xdr, 'base64');
-      const results = transactionResult.result().results();
-      if (results && results.length > 0) {
-        const scVal = results[0].value();
-        if (scVal.switch() === xdr.ScValType.scvBytes()) {
-          return Buffer.from(scVal.bytes()).toString('hex');
+  private extractEscrowIdFromResult(result: unknown): string {
+    const r = result as Record<string, unknown>;
+    if (r.result_xdr && typeof r.result_xdr === 'string') {
+      const txResult = xdr.TransactionResult.fromXDR(r.result_xdr, 'base64');
+      const opResults = txResult.result().results();
+      if (opResults && opResults.length > 0) {
+        // The inner result value — use any to avoid version-specific type issues
+        const inner = (opResults[0] as any).value?.();
+        if (inner && inner.switch?.() === xdr.ScValType.scvBytes()) {
+          return Buffer.from(inner.bytes()).toString('hex');
         }
       }
     }
@@ -509,13 +518,13 @@ export class StellarPayments {
       throw new Error('Invalid aggregated rate format');
     }
 
-    const map = scVal.map();
-    const result: any = {};
+    const result: Partial<AggregatedRate> = {};
+    const entries = scVal.map() ?? [];
 
-    for (const entry of map) {
+    for (const entry of entries) {
       const key = entry.key().sym().toString();
       const value = entry.val();
-      
+
       switch (key) {
         case 'rate':
           result.rate = new BigNumber(value.u128().toString()).toString();
@@ -527,7 +536,7 @@ export class StellarPayments {
           result.sources_count = value.u32();
           break;
         case 'last_updated':
-          result.last_updated = value.u64();
+          result.last_updated = Number(value.u64());
           break;
         case 'deviation_threshold':
           result.deviation_threshold = value.u32();
@@ -543,13 +552,13 @@ export class StellarPayments {
       throw new Error('Invalid compliance check format');
     }
 
-    const map = scVal.map();
-    const result: any = {};
+    const result: Partial<ComplianceCheck> = {};
+    const entries = scVal.map() ?? [];
 
-    for (const entry of map) {
+    for (const entry of entries) {
       const key = entry.key().sym().toString();
       const value = entry.val();
-      
+
       switch (key) {
         case 'transaction_id':
           result.transaction_id = Buffer.from(value.bytes()).toString('hex');
@@ -573,7 +582,7 @@ export class StellarPayments {
           result.jurisdiction_to = value.sym().toString();
           break;
         case 'timestamp':
-          result.timestamp = value.u64();
+          result.timestamp = Number(value.u64());
           break;
         case 'approved':
           result.approved = value.b();
@@ -595,13 +604,13 @@ export class StellarPayments {
       throw new Error('Invalid escrow format');
     }
 
-    const map = scVal.map();
-    const result: any = {};
+    const result: Partial<Escrow> = {};
+    const entries = scVal.map() ?? [];
 
-    for (const entry of map) {
+    for (const entry of entries) {
       const key = entry.key().sym().toString();
       const value = entry.val();
-      
+
       switch (key) {
         case 'id':
           result.id = Buffer.from(value.bytes()).toString('hex');
@@ -622,10 +631,10 @@ export class StellarPayments {
           result.status = this.parseEscrowStatus(value);
           break;
         case 'release_time':
-          result.release_time = value.u64();
+          result.release_time = Number(value.u64());
           break;
         case 'created_at':
-          result.created_at = value.u64();
+          result.created_at = Number(value.u64());
           break;
         case 'metadata':
           result.metadata = this.parseMetadata(value);
@@ -639,23 +648,21 @@ export class StellarPayments {
   private parseEscrowStatus(scVal: xdr.ScVal): EscrowStatus {
     const status = scVal.sym().toString();
     switch (status) {
-      case 'Pending': return EscrowStatus.Pending;
+      case 'Pending':   return EscrowStatus.Pending;
       case 'Completed': return EscrowStatus.Completed;
-      case 'Refunded': return EscrowStatus.Refunded;
-      case 'Disputed': return EscrowStatus.Disputed;
+      case 'Refunded':  return EscrowStatus.Refunded;
+      case 'Disputed':  return EscrowStatus.Disputed;
       default: throw new Error(`Unknown escrow status: ${status}`);
     }
   }
 
   private parseMetadata(scVal: xdr.ScVal): Record<string, Uint8Array> {
-    if (scVal.switch() !== xdr.ScValType.scvMap()) {
-      return {};
-    }
+    if (scVal.switch() !== xdr.ScValType.scvMap()) return {};
 
-    const map = scVal.map();
     const result: Record<string, Uint8Array> = {};
+    const entries = scVal.map() ?? [];
 
-    for (const entry of map) {
+    for (const entry of entries) {
       const key = entry.key().sym().toString();
       const value = entry.val();
       if (value.switch() === xdr.ScValType.scvBytes()) {
@@ -667,42 +674,26 @@ export class StellarPayments {
   }
 
   private parseStringArray(scVal: xdr.ScVal): string[] {
-    if (scVal.switch() !== xdr.ScValType.scvVec()) {
-      return [];
-    }
+    if (scVal.switch() !== xdr.ScValType.scvVec()) return [];
 
-    const vec = scVal.vec();
     const result: string[] = [];
+    const items = scVal.vec() ?? [];
 
-    for (const item of vec) {
+    for (const item of items) {
       if (item.switch() === xdr.ScValType.scvBytes()) {
         result.push(Buffer.from(item.bytes()).toString('hex'));
       }
     }
-
     return result;
   }
 
   private parseEscrowList(scVal: xdr.ScVal): string[] {
-    if (scVal.switch() !== xdr.ScValType.scvVec()) {
-      return [];
-    }
-
-    const vec = scVal.vec();
-    const result: string[] = [];
-
-    for (const item of vec) {
-      if (item.switch() === xdr.ScValType.scvBytes()) {
-        result.push(Buffer.from(item.bytes()).toString('hex'));
-      }
-    }
-
-    return result;
+    return this.parseStringArray(scVal);
   }
 
-  private async getRateSources(fromCurrency: string, toCurrency: string): Promise<any[]> {
-    // This would typically query the rate oracle for individual source rates
-    // For now, return an empty array as this is a placeholder
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async getRateSources(_from: string, _to: string): Promise<never[]> {
+    // Placeholder — real impl queries individual oracle sources
     return [];
   }
 

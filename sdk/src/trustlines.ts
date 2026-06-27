@@ -39,10 +39,10 @@ export class TrustlineService {
     }
 
     // Create the CHANGE_TRUST operation
-    return Operation.changeTrust({
-      asset,
-      limit,
-    });
+    const op = limit !== undefined
+      ? Operation.changeTrust({ asset, limit })
+      : Operation.changeTrust({ asset });
+    return op as unknown as Operation;
   }
 
   /**

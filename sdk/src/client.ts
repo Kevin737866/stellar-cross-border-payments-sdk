@@ -3,10 +3,10 @@ import {
   Asset,
   Contract,
   Keypair,
+  Memo,
   Networks,
   Operation,
   TransactionBuilder,
-  Soroban,
   BASE_FEE,
   TimeoutInfinite,
   xdr,
@@ -14,6 +14,7 @@ import {
   Address,
   Horizon,
 } from 'stellar-sdk';
+import { SorobanRpc } from 'stellar-sdk';
 import { AxiosInstance, default as axios } from 'axios';
 import BigNumber from 'bignumber.js';
 import {
@@ -24,14 +25,13 @@ import {
   AccountInfo,
   FeeEstimate,
   ErrorInfo,
-  ApiResponse,
 } from './types';
 
 export class StellarClient {
   private config: StellarConfig;
   private contracts: ContractAddresses;
   private httpClient: AxiosInstance;
-  private soroban: Soroban;
+  private sorobanRpc: SorobanRpc.Server;
 
   constructor(config: StellarConfig, contracts: ContractAddresses) {
     this.config = config;
@@ -39,21 +39,17 @@ export class StellarClient {
     this.httpClient = axios.create({
       baseURL: config.horizonUrl,
       timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
-
-    this.soroban = new Soroban(config.sorobanRpcUrl);
+    this.sorobanRpc = new SorobanRpc.Server(config.sorobanRpcUrl);
   }
 
   async getNetworkInfo(): Promise<NetworkInfo> {
     try {
-      const [friendbotUrl] = await Promise.all([
+      const friendbotUrl =
         this.config.networkPassphrase === Networks.TESTNET
           ? `${this.config.horizonUrl}/friendbot`
-          : undefined,
-      ]);
+          : undefined;
 
       return {
         horizonUrl: this.config.horizonUrl,
@@ -73,7 +69,8 @@ export class StellarClient {
 
       return {
         accountId: account.id,
-        balance: account.balances.find((b: any) => b.asset_type === 'native')?.balance || '0',
+        balance:
+          account.balances.find((b: any) => b.asset_type === 'native')?.balance ?? '0',
         sequence: account.sequence,
         numSubentries: account.num_subentries,
         flags: {
@@ -92,16 +89,8 @@ export class StellarClient {
       if (this.config.networkPassphrase !== Networks.TESTNET) {
         throw new Error('Testnet funding is only available on testnet');
       }
-
-      const response = await this.httpClient.post('/friendbot', {
-        addr: accountId,
-      });
-
-      return {
-        hash: response.data.hash,
-        success: true,
-        result: response.data,
-      };
+      const response = await this.httpClient.post('/friendbot', { addr: accountId });
+      return { hash: response.data.hash, success: true, result: response.data };
     } catch (error) {
       throw this.handleError(error);
     }
@@ -113,7 +102,6 @@ export class StellarClient {
       const recommendedFee = baseFee.multipliedBy(operations);
       const maxFee = recommendedFee.multipliedBy(2);
       const feeBumpFee = recommendedFee.multipliedBy(1.5);
-
       return {
         minFee: baseFee.toString(),
         recommendedFee: recommendedFee.toString(),
@@ -135,23 +123,21 @@ export class StellarClient {
       feeBump?: boolean;
     } = {}
   ): Promise<TransactionBuilder> {
-    const fee = options.fee || (options.feeBump ? '2000' : BASE_FEE);
-    const timeout = options.timeout || TimeoutInfinite;
+    const fee = options.fee ?? (options.feeBump ? '2000' : BASE_FEE);
+    const timeout = options.timeout ?? TimeoutInfinite;
 
     let builder = new TransactionBuilder(sourceAccount, {
       fee,
       networkPassphrase: this.config.networkPassphrase,
-      timebounds: {
-        minTime: 0,
-        maxTime: timeout,
-      },
+      timebounds: { minTime: 0, maxTime: timeout },
     });
 
     if (options.memo) {
-      builder = builder.addMemo(Operation.memoText(options.memo));
+      builder = builder.addMemo(Memo.text(options.memo));
     }
 
-    operations.forEach(op => builder.addOperation(op));
+    // stellar-sdk v12 Contract.call() returns Operation2 — cast through any
+    operations.forEach((op) => builder.addOperation(op as any));
 
     return builder;
   }
@@ -163,36 +149,24 @@ export class StellarClient {
     try {
       const response = await this.httpClient.post('/transactions', {
         tx: transactionXdr,
-        skip_ledger_check: options.skipLedgerCheck || false,
+        skip_ledger_check: options.skipLedgerCheck ?? false,
       });
-
       const result = response.data;
-
-      return {
-        hash: result.hash,
-        success: result.successful,
-        result: result,
-      };
+      return { hash: result.hash, success: result.successful, result };
     } catch (error: any) {
       const errorInfo: ErrorInfo = {
-        code: error.response?.data?.code || 'UNKNOWN_ERROR',
-        message: error.response?.data?.title || error.message,
+        code: error.response?.data?.code ?? 'UNKNOWN_ERROR',
+        message: error.response?.data?.title ?? error.message,
         details: error.response?.data,
         transactionResult: error.response?.data?.extras?.result_codes,
       };
-
-      return {
-        hash: '',
-        success: false,
-        error: errorInfo.message,
-      };
+      return { hash: '', success: false, error: errorInfo.message };
     }
   }
 
   async simulateTransaction(transactionXdr: string): Promise<any> {
     try {
-      const result = await this.soroban.simulateTransaction(transactionXdr);
-      return result;
+      return await this.sorobanRpc.simulateTransaction(transactionXdr as any);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -208,37 +182,34 @@ export class StellarClient {
         new xdr.LedgerKeyContractData({
           contract: Address.fromString(contractId).toScAddress(),
           key,
-          durability: durability === 'temporary' 
-            ? xdr.ContractDataDurability.temporary()
-            : xdr.ContractDataDurability.persistent(),
+          durability:
+            durability === 'temporary'
+              ? xdr.ContractDataDurability.temporary()
+              : xdr.ContractDataDurability.persistent(),
         })
       );
 
-      const result = await this.soroban.getLedgerEntries(ledgerKey);
-      
-      if (result.entries.length === 0) {
-        return null;
-      }
+      const result = await this.sorobanRpc.getLedgerEntries(ledgerKey);
 
-      return result.entries[0].val;
+      if (result.entries.length === 0) return null;
+
+      // val is the raw ledger entry data; extract the contract data value
+      const entry = result.entries[0] as any;
+      const scVal: xdr.ScVal = entry.val?.contractData?.()?.val?.() ?? entry.val;
+      return scVal;
     } catch (error) {
       throw this.handleError(error);
     }
   }
 
-  async invokeContractMethod(
+  /** Returns the raw Operation2 — callers should cast via `as unknown as Operation` */
+  invokeContractMethod(
     contractId: string,
     method: string,
     args: xdr.ScVal[] = []
-  ): Promise<xdr.ScVal> {
-    try {
-      const contract = new Contract(contractId);
-      const operation = contract.call(method, ...args);
-      
-      return operation;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  ): Operation {
+    const contract = new Contract(contractId);
+    return contract.call(method, ...args) as unknown as Operation;
   }
 
   getEscrowContract(): Contract {
@@ -267,6 +238,7 @@ export class StellarClient {
       return true;
     } catch {
       try {
+        // eslint-disable-next-line no-new
         new Address(address);
         return true;
       } catch {
@@ -276,13 +248,15 @@ export class StellarClient {
   }
 
   formatAmount(amount: string | number, decimals: number = 7): string {
-    const bn = new BigNumber(amount);
-    return bn.dividedBy(new BigNumber(10).pow(decimals)).toString();
+    return new BigNumber(amount)
+      .dividedBy(new BigNumber(10).pow(decimals))
+      .toString();
   }
 
   parseAmount(amount: string, decimals: number = 7): string {
-    const bn = new BigNumber(amount);
-    return bn.multipliedBy(new BigNumber(10).pow(decimals)).toFixed(0);
+    return new BigNumber(amount)
+      .multipliedBy(new BigNumber(10).pow(decimals))
+      .toFixed(0);
   }
 
   async waitForTransaction(
@@ -290,26 +264,20 @@ export class StellarClient {
     timeout: number = 30000
   ): Promise<TransactionResult> {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
       try {
         const response = await this.httpClient.get(`/transactions/${hash}`);
         const transaction = response.data;
-
         if (transaction.successful !== undefined) {
-          return {
-            hash,
-            success: transaction.successful,
-            result: transaction,
-          };
+          return { hash, success: transaction.successful, result: transaction };
         }
       } catch (error: any) {
         if (error.response?.status !== 404) {
           throw this.handleError(error);
         }
       }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     throw new Error(`Transaction ${hash} not confirmed within ${timeout}ms`);
@@ -318,13 +286,13 @@ export class StellarClient {
   private handleError(error: any): Error {
     if (error.response) {
       const { status, data } = error.response;
-      const message = data.title || data.message || error.message;
+      const message = data.title ?? data.message ?? error.message;
       return new Error(`Stellar API Error (${status}): ${message}`);
-    } else if (error.request) {
-      return new Error('Network error: Unable to connect to Stellar API');
-    } else {
-      return new Error(`Unexpected error: ${error.message}`);
     }
+    if (error.request) {
+      return new Error('Network error: Unable to connect to Stellar API');
+    }
+    return new Error(`Unexpected error: ${error.message}`);
   }
 
   getConfig(): StellarConfig {
@@ -337,13 +305,11 @@ export class StellarClient {
 
   updateConfig(newConfig: Partial<StellarConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    
     if (newConfig.horizonUrl) {
       this.httpClient.defaults.baseURL = newConfig.horizonUrl;
     }
-    
     if (newConfig.sorobanRpcUrl) {
-      this.soroban = new Soroban(newConfig.sorobanRpcUrl);
+      this.sorobanRpc = new SorobanRpc.Server(newConfig.sorobanRpcUrl);
     }
   }
 }

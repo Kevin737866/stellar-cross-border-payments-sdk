@@ -94,24 +94,8 @@ export function validatePaymentForm(values: PaymentFormValues): FormErrors {
   // ── Token / custom asset validation ────────────────────────────────────────
   if (!values.token) {
     errors.token = 'Please select a token.';
-  } else if (isCustomAsset(values.token)) {
-    // Validate the custom asset fields when the custom option is selected
-    const code   = values.customAssetCode?.trim() ?? '';
-    const issuer = values.customAssetIssuer?.trim() ?? '';
-
-    if (!code)
-      errors.customAssetCode = 'Asset code is required.';
-    else if (!ASSET_CODE_RE.test(code.toUpperCase()))
-      errors.customAssetCode = 'Asset code must be 1–12 uppercase letters/digits (e.g. MYTOKEN).';
-
-    if (!issuer)
-      errors.customAssetIssuer = 'Issuer address is required.';
-    else if (!STELLAR_ADDR_RE.test(issuer))
-      errors.customAssetIssuer = 'Enter a valid Stellar issuer address (G...).';
   } else if (!(SUPPORTED_TOKENS as readonly string[]).includes(values.token)) {
-    // For non-custom tokens, verify the value is one of the known whitelisted entries.
-    // (The form populates token with contract addresses, so this guards against tampering.)
-    errors.token = `Unrecognised token. Select one from the list or choose "Custom Asset".`;
+    errors.token = `Unsupported token. Choose one of: ${SUPPORTED_TOKENS.join(', ')}.`;
   }
 
   // ── Release time validation ─────────────────────────────────────────────────

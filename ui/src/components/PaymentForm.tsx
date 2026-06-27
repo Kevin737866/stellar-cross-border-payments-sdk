@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import {
@@ -8,15 +8,19 @@ import {
   DollarSign,
   CheckCircle,
   Loader2,
-  PlusCircle,
 } from 'lucide-react';
 import { StellarCrossBorderSDK } from '@stellar-cross-border/sdk';
-import { PaymentRequest, PaymentOptions, EscrowCreationResult } from '@stellar-cross-border/sdk';
+import { PaymentRequest, PaymentOptions } from '@stellar-cross-border/sdk';
 import {
-  CUSTOM_ASSET_VALUE,
-  isCustomAsset,
-  resolveTokenValue,
-} from '../lib/validatePaymentForm';
+  TokenEntry,
+  TokenMetadataSource,
+  DEFAULT_TOKENS,
+  fetchTokenList,
+} from '../lib/tokens';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 // ── Whitelisted tokens shown in the dropdown ────────────────────────────────
 const COMMON_TOKENS = [
@@ -42,26 +46,78 @@ interface PaymentFormData {
   feeBump: boolean;
 }
 
-// ── Component props with strong SDK types ───────────────────────────────────
-interface PaymentFormProps {
+/**
+ * Signature for an address-validation callback.
+ *
+ * Returning `true` means the address is valid; returning a string provides a
+ * human-readable error message; returning `false` shows a generic error.
+ */
+export type AddressValidator = (address: string) => boolean | string;
+
+export interface PaymentFormProps {
+  /** SDK instance — used only for submitting payments, NOT for validation. */
   sdk: StellarCrossBorderSDK;
-  onSuccess?: (result: EscrowCreationResult) => void;
+
+  /**
+   * Custom address validator.
+   *
+   * If omitted the form falls back to a basic Stellar public-key regex so
+   * the component can still be rendered without an SDK or custom logic.
+   */
+  validateAddress?: AddressValidator;
+
+  /**
+   * Custom token list.  Overrides the built-in DEFAULT_TOKENS when provided.
+   */
+  tokens?: TokenEntry[];
+
+  /**
+   * Optional source for dynamically fetching token metadata (symbol, name,
+   * contract address, price).  Only used when `tokens` is NOT explicitly
+   * provided so that a fully custom list is never mutated.
+   */
+  tokenMetadataSource?: TokenMetadataSource;
+
+  onSuccess?: (result: any) => void;
   onError?: (error: string) => void;
 }
 
+// ---------------------------------------------------------------------------
+// Default validator (fallback when no prop is supplied)
+// ---------------------------------------------------------------------------
+
+const defaultAddressValidator: AddressValidator = (address: string) => {
+  // Accepts G... (ed25519 public keys) and C... (Soroban contract addresses)
+  return /^[GC][A-Z2-7]{55}$/.test(address) || 'Enter a valid Stellar address (G… or C…).';
+};
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export const PaymentForm: React.FC<PaymentFormProps> = ({
   sdk,
+  validateAddress,
+  tokens: tokensProp,
+  tokenMetadataSource,
   onSuccess,
   onError,
 }) => {
-  const [isSubmitting, setIsSubmitting]               = useState(false);
-  const [currentStep, setCurrentStep]                 = useState(1);
-  const [paymentResult, setPaymentResult]             = useState<EscrowCreationResult | null>(null);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [paymentResult, setPaymentResult] = useState<any>(null);
 
+  // Token list state — starts from prop or default, may be enriched async.
+  const [tokenList, setTokenList] = useState<TokenEntry[]>(
+    tokensProp ?? DEFAULT_TOKENS
+  );
+  const [tokensLoading, setTokensLoading] = useState(false);
+
+  // ── Form ───────────────────────────────────────────────────────────────────
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isValid },
   } = useForm<PaymentFormData>({
     mode: 'onChange',
@@ -73,102 +129,98 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
     },
   });
 
-  const watchedToken = watch('token');
-  const showCustomFields = isCustomAsset(watchedToken);
-
-  const validateStellarAddress = (address: string) => {
-    try {
-      return sdk.clientInstance.validateAddress(address);
-    } catch {
-      return false;
-    }
-  };
-
+  // ── Validator resolution ───────────────────────────────────────────────────
   /**
-   * Validates a Stellar asset code: 1–12 uppercase letters/digits.
-   * Returns true (valid) or an error string.
+   * Resolves address validation result to a boolean or error string.
+   * react-hook-form's `validate` option accepts exactly this shape.
    */
-  const validateAssetCode = (code: string): true | string => {
-    if (!showCustomFields) return true;
-    if (!code) return 'Asset code is required.';
-    if (!/^[A-Z0-9]{1,12}$/.test(code.toUpperCase().trim()))
-      return 'Asset code must be 1–12 uppercase letters/digits (e.g. MYTOKEN).';
-    return true;
-  };
+  const resolveValidator = useCallback(
+    (address: string): boolean | string => {
+      const validator = validateAddress ?? defaultAddressValidator;
+      const result = validator(address);
+      if (result === true) return true;
+      if (result === false) return 'Invalid Stellar address.';
+      return result; // string error message
+    },
+    [validateAddress]
+  );
 
-  /**
-   * Validates a Stellar issuer address when a custom asset is selected.
-   */
-  const validateAssetIssuer = (issuer: string): true | string => {
-    if (!showCustomFields) return true;
-    if (!issuer) return 'Issuer address is required.';
-    if (!sdk.clientInstance.validateAddress(issuer))
-      return 'Enter a valid Stellar issuer address (G...).';
-    return true;
-  };
-
-  const onSubmit = useCallback(async (data: PaymentFormData) => {
-    if (!validateStellarAddress(data.from)) {
-      toast.error('Invalid sender address');
-      return;
-    }
-    if (!validateStellarAddress(data.to)) {
-      toast.error('Invalid receiver address');
+  // ── Token list enrichment ──────────────────────────────────────────────────
+  useEffect(() => {
+    // If the caller supplied an explicit list, use it directly — no fetching.
+    if (tokensProp) {
+      setTokenList(tokensProp);
       return;
     }
 
-    // Resolve the final token identifier: contract address, 'native', or 'CODE:ISSUER'
-    const resolvedToken = resolveTokenValue(data.token, {
-      assetCode:   data.customAssetCode,
-      assetIssuer: data.customAssetIssuer,
-    });
+    if (!tokenMetadataSource) return;
 
-    if (!resolvedToken) {
-      toast.error('Custom asset details are incomplete.');
-      return;
-    }
+    let cancelled = false;
+    setTokensLoading(true);
 
-    setIsSubmitting(true);
-    setCurrentStep(2);
+    fetchTokenList(DEFAULT_TOKENS, tokenMetadataSource)
+      .then((enriched) => {
+        if (!cancelled) setTokenList(enriched);
+      })
+      .finally(() => {
+        if (!cancelled) setTokensLoading(false);
+      });
 
-    try {
-      const releaseTime = Math.floor(Date.now() / 1000) + parseInt(data.releaseTime) * 3600;
+    return () => {
+      cancelled = true;
+    };
+  }, [tokensProp, tokenMetadataSource]);
 
-      const paymentRequest: PaymentRequest = {
-        from:         data.from,
-        to:           data.to,
-        amount:       data.amount,
-        token:        resolvedToken,
-        release_time: releaseTime,
-        metadata:     {},
-      };
+  // ── Submission ─────────────────────────────────────────────────────────────
+  const onSubmit = useCallback(
+    async (data: PaymentFormData) => {
+      setIsSubmitting(true);
+      setCurrentStep(2);
 
-      const paymentOptions: PaymentOptions = {
-        feeBump: data.feeBump,
-        memo:    data.memo,
-        submit:  true,
-      };
+      try {
+        const releaseTime =
+          Math.floor(Date.now() / 1000) + parseInt(data.releaseTime) * 3600;
 
-      const result = await sdk.paymentsInstance.createPayment(paymentRequest, paymentOptions);
+        const paymentRequest: PaymentRequest = {
+          from: data.from,
+          to: data.to,
+          amount: data.amount,
+          token: data.token,
+          release_time: releaseTime,
+          metadata: {},
+        };
 
-      if (result.success) {
-        setPaymentResult(result);
-        setCurrentStep(3);
-        onSuccess?.(result);
-        toast.success('Payment created successfully!');
-      } else {
-        throw new Error(result.error || 'Payment creation failed');
+        const paymentOptions: PaymentOptions = {
+          feeBump: data.feeBump,
+          memo: data.memo,
+          submit: true,
+        };
+
+        const result = await sdk.paymentsInstance.createPayment(
+          paymentRequest,
+          paymentOptions
+        );
+
+        if (result.success) {
+          setPaymentResult(result);
+          setCurrentStep(3);
+          onSuccess?.(result);
+          toast.success('Payment created successfully!');
+        } else {
+          throw new Error(result.error || 'Payment creation failed');
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        onError?.(errorMessage);
+        toast.error(errorMessage);
+        setCurrentStep(1);
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      onError?.(errorMessage);
-      toast.error(errorMessage);
-      setCurrentStep(1);
-    } finally {
-      setIsSubmitting(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdk, onSuccess, onError, showCustomFields]);
+    },
+    [sdk, onSuccess, onError]
+  );
 
   const resetForm = () => {
     setCurrentStep(1);
@@ -176,8 +228,10 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
     setIsSubmitting(false);
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+      {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           Cross-Border Payment
@@ -187,6 +241,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
         </p>
       </div>
 
+      {/* Step indicator */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           {[1, 2, 3].map((step) => (
@@ -217,8 +272,10 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
         </div>
       </div>
 
+      {/* ── Step 1: form ── */}
       {currentStep === 1 && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Addresses */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -227,15 +284,18 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
               <input
                 {...register('from', {
                   required: 'Sender address is required',
-                  validate: validateStellarAddress,
+                  validate: resolveValidator,
                 })}
                 type="text"
-                placeholder="G..."
+                placeholder="G…"
+                data-testid="from-address"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isSubmitting}
               />
               {errors.from && (
-                <p className="mt-1 text-sm text-red-600">{errors.from.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.from.message}
+                </p>
               )}
             </div>
 
@@ -246,19 +306,23 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
               <input
                 {...register('to', {
                   required: 'Receiver address is required',
-                  validate: validateStellarAddress,
+                  validate: resolveValidator,
                 })}
                 type="text"
-                placeholder="G..."
+                placeholder="G…"
+                data-testid="to-address"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isSubmitting}
               />
               {errors.to && (
-                <p className="mt-1 text-sm text-red-600">{errors.to.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.to.message}
+                </p>
               )}
             </div>
           </div>
 
+          {/* Amount + Token */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -281,102 +345,47 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
                 />
               </div>
               {errors.amount && (
-                <p className="mt-1 text-sm text-red-600">{errors.amount.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.amount.message}
+                </p>
               )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Token
+                {tokensLoading && (
+                  <Loader2 className="inline-block ml-1 w-3 h-3 animate-spin text-blue-500" />
+                )}
               </label>
               <select
                 {...register('token', { required: 'Token is required' })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isSubmitting}
+                disabled={isSubmitting || tokensLoading}
               >
-                <option value="">Select token</option>
-                {COMMON_TOKENS.map((token) => (
+                <option value="">
+                  {tokensLoading ? 'Loading tokens…' : 'Select token'}
+                </option>
+                {tokenList.map((token) => (
                   <option key={token.symbol} value={token.contract}>
-                    {token.symbol} — {token.name}
+                    {token.symbol} – {token.name}
+                    {token.priceUsd != null
+                      ? ` ($${token.priceUsd.toFixed(4)})`
+                      : ''}
                   </option>
                 ))}
                 {/* Custom asset entry */}
                 <option value={CUSTOM_ASSET_VALUE}>⚙ Custom Asset…</option>
               </select>
               {errors.token && (
-                <p className="mt-1 text-sm text-red-600">{errors.token.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.token.message}
+                </p>
               )}
             </div>
           </div>
 
-          {/* Custom asset fields — shown only when user selects "Custom Asset" */}
-          {showCustomFields && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
-              <div className="md:col-span-2 flex items-center gap-2 text-sm font-medium text-amber-800">
-                <PlusCircle className="w-4 h-4" />
-                <span>Custom Stellar Asset</span>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Asset Code
-                </label>
-                <input
-                  {...register('customAssetCode', {
-                    validate: validateAssetCode,
-                  })}
-                  type="text"
-                  placeholder="e.g. MYTOKEN"
-                  maxLength={12}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
-                  disabled={isSubmitting}
-                  style={{ textTransform: 'uppercase' }}
-                />
-                {errors.customAssetCode && (
-                  <p className="mt-1 text-sm text-red-600">{errors.customAssetCode.message}</p>
-                )}
-                <p className="mt-1 text-xs text-gray-500">
-                  1–12 uppercase letters/digits as registered on Stellar.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Issuer Address
-                </label>
-                <input
-                  {...register('customAssetIssuer', {
-                    validate: validateAssetIssuer,
-                  })}
-                  type="text"
-                  placeholder="G..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
-                  disabled={isSubmitting}
-                />
-                {errors.customAssetIssuer && (
-                  <p className="mt-1 text-sm text-red-600">{errors.customAssetIssuer.message}</p>
-                )}
-                <p className="mt-1 text-xs text-gray-500">
-                  The Stellar account that issued this asset.
-                </p>
-              </div>
-
-              <div className="md:col-span-2 text-xs text-amber-700 bg-amber-100 rounded px-3 py-2">
-                <strong>Security note:</strong> Only enter assets you trust. Verify the issuer
-                address on{' '}
-                <a
-                  href="https://stellar.expert"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline"
-                >
-                  stellar.expert
-                </a>{' '}
-                before sending funds.
-              </div>
-            </div>
-          )}
-
+          {/* Release time + Memo */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -397,7 +406,9 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
                 />
               </div>
               {errors.releaseTime && (
-                <p className="mt-1 text-sm text-red-600">{errors.releaseTime.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.releaseTime.message}
+                </p>
               )}
             </div>
 
@@ -416,6 +427,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
             </div>
           </div>
 
+          {/* Fee bump */}
           <div className="flex items-center space-x-2">
             <input
               {...register('feeBump')}
@@ -429,6 +441,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
             </label>
           </div>
 
+          {/* Security callout */}
           <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
             <div className="flex items-start space-x-2">
               <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
@@ -452,7 +465,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Processing...</span>
+                <span>Processing…</span>
               </>
             ) : (
               <>
@@ -464,6 +477,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
         </form>
       )}
 
+      {/* ── Step 2: processing ── */}
       {currentStep === 2 && (
         <div className="text-center py-8">
           <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
@@ -471,11 +485,12 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
             Processing Payment
           </h3>
           <p className="text-gray-600">
-            Creating escrow and running compliance checks...
+            Creating escrow and running compliance checks…
           </p>
         </div>
       )}
 
+      {/* ── Step 3: success ── */}
       {currentStep === 3 && paymentResult && (
         <div className="text-center py-8">
           <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
@@ -485,19 +500,21 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
           <div className="bg-gray-50 rounded-md p-4 mb-6 text-left">
             <div className="space-y-2">
               <div>
-                <span className="text-sm font-medium text-gray-700">Transaction Hash:</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Transaction Hash:
+                </span>
                 <p className="text-sm text-gray-600 font-mono break-all">
                   {paymentResult.hash}
                 </p>
               </div>
-              {paymentResult.escrowId && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Escrow ID:</span>
-                  <p className="text-sm text-gray-600 font-mono break-all">
-                    {paymentResult.escrowId}
-                  </p>
-                </div>
-              )}
+              <div>
+                <span className="text-sm font-medium text-gray-700">
+                  Escrow ID:
+                </span>
+                <p className="text-sm text-gray-600 font-mono break-all">
+                  {paymentResult.escrowId}
+                </p>
+              </div>
             </div>
           </div>
           <button
