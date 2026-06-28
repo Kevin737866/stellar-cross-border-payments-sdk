@@ -108,3 +108,10 @@ settings.local.js
 *.soroban
 soroban/
 *.wasm
+
+# Kiro IDE
+.kiro/
+
+# Pull request drafts
+pull-request*.md
+pr-*.md
