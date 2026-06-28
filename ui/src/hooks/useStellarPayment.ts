@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useReducer } from 'react';
 import { Keypair } from 'stellar-sdk';
 import { StellarCrossBorderSDK } from '@stellar-cross-border/sdk';
 import {
@@ -39,6 +39,44 @@ export interface StellarPaymentActions {
   clearError: () => void;
 }
 
+type StateAction =
+  | { type: 'START' }
+  | { type: 'DONE' }
+  | { type: 'FAIL'; error: string }
+  | { type: 'SET_PAYMENT_STATUS'; paymentStatus: PaymentStatus }
+  | { type: 'SET_EXCHANGE_RATE'; exchangeRate: ExchangeRateResult }
+  | { type: 'SET_COMPLIANCE_CHECK'; complianceCheck: ComplianceCheckResult }
+  | { type: 'CLEAR_ERROR' };
+
+const initialState: StellarPaymentState = {
+  loading: false,
+  error: null,
+  paymentStatus: null,
+  exchangeRate: null,
+  complianceCheck: null,
+};
+
+function stateReducer(state: StellarPaymentState, action: StateAction): StellarPaymentState {
+  switch (action.type) {
+    case 'START':
+      return { ...state, loading: true, error: null };
+    case 'DONE':
+      return { ...state, loading: false };
+    case 'FAIL':
+      return { ...state, loading: false, error: action.error };
+    case 'SET_PAYMENT_STATUS':
+      return { ...state, paymentStatus: action.paymentStatus };
+    case 'SET_EXCHANGE_RATE':
+      return { ...state, exchangeRate: action.exchangeRate };
+    case 'SET_COMPLIANCE_CHECK':
+      return { ...state, complianceCheck: action.complianceCheck };
+    case 'CLEAR_ERROR':
+      return { ...state, error: null };
+    default:
+      return state;
+  }
+}
+
 export const useStellarPayment = (
   sdk: StellarCrossBorderSDK,
   escrowId?: string,
@@ -46,114 +84,85 @@ export const useStellarPayment = (
 ): StellarPaymentState & StellarPaymentActions => {
   const { autoRefresh = true, refreshInterval = 30000 } = options;
 
-  const [state, setState] = useState<StellarPaymentState>({
-    loading: false,
-    error: null,
-    paymentStatus: null,
-    exchangeRate: null,
-    complianceCheck: null,
-  });
-
-  const setLoading = (loading: boolean) => {
-    setState(prev => ({ ...prev, loading }));
-  };
-
-  const setError = (error: string | null) => {
-    setState(prev => ({ ...prev, error }));
-  };
+  const [state, dispatch] = useReducer(stateReducer, initialState);
 
   const clearError = useCallback(() => {
-    setError(null);
+    dispatch({ type: 'CLEAR_ERROR' });
+  }, []);
+
+  const run = useCallback(async <T,>(
+    fn: () => Promise<T>,
+    onSuccess?: (result: T) => void,
+  ): Promise<T> => {
+    dispatch({ type: 'START' });
+    try {
+      const result = await fn();
+      onSuccess?.(result);
+      dispatch({ type: 'DONE' });
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An error occurred';
+      dispatch({ type: 'FAIL', error: message });
+      throw err;
+    }
   }, []);
 
   const getPaymentStatus = useCallback(async (id: string): Promise<PaymentStatus> => {
-    try {
-      setLoading(true);
-      const status = await sdk.paymentsInstance.getPaymentStatus(id);
-      setState(prev => ({ ...prev, paymentStatus: status }));
-      return status;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get payment status';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [sdk]);
+    return run(
+      () => sdk.paymentsInstance.getPaymentStatus(id),
+      (status) => dispatch({ type: 'SET_PAYMENT_STATUS', paymentStatus: status }),
+    );
+  }, [sdk, run]);
 
   const createPayment = useCallback(async (
     request: PaymentRequest,
     options?: PaymentOptions
   ): Promise<EscrowCreationResult> => {
-    try {
-      setLoading(true);
-      clearError();
-      
+    return run(async () => {
       const result = await sdk.paymentsInstance.createPayment(request, options);
       
       if (result.success && result.escrowId) {
-        await getPaymentStatus(result.escrowId);
+        const status = await sdk.paymentsInstance.getPaymentStatus(result.escrowId);
+        dispatch({ type: 'SET_PAYMENT_STATUS', paymentStatus: status });
       }
       
       return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create payment';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [sdk, getPaymentStatus, clearError]);
+    }, undefined);
+  }, [sdk, run]);
 
   const releaseEscrow = useCallback(async (
     id: string,
     signer: Keypair,
     options?: PaymentOptions
   ): Promise<TransactionResult> => {
-    try {
-      setLoading(true);
-      clearError();
-      
+    return run(async () => {
       const result = await sdk.paymentsInstance.releaseEscrow(id, signer, options);
       
       if (result.success) {
-        await getPaymentStatus(id);
+        const status = await sdk.paymentsInstance.getPaymentStatus(id);
+        dispatch({ type: 'SET_PAYMENT_STATUS', paymentStatus: status });
       }
       
       return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to release escrow';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [sdk, getPaymentStatus, clearError]);
+    }, undefined);
+  }, [sdk, run]);
 
   const refundEscrow = useCallback(async (
     id: string,
     signer: Keypair,
     options?: PaymentOptions
   ): Promise<TransactionResult> => {
-    try {
-      setLoading(true);
-      clearError();
-      
+    return run(async () => {
       const result = await sdk.paymentsInstance.refundEscrow(id, signer, options);
       
       if (result.success) {
-        await getPaymentStatus(id);
+        const status = await sdk.paymentsInstance.getPaymentStatus(id);
+        dispatch({ type: 'SET_PAYMENT_STATUS', paymentStatus: status });
       }
       
       return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to refund escrow';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [sdk, getPaymentStatus, clearError]);
+    }, undefined);
+  }, [sdk, run]);
 
   const disputeEscrow = useCallback(async (
     id: string,
@@ -163,10 +172,7 @@ export const useStellarPayment = (
     signer: Keypair,
     options?: PaymentOptions
   ): Promise<TransactionResult> => {
-    try {
-      setLoading(true);
-      clearError();
-      
+    return run(async () => {
       const result = await sdk.paymentsInstance.disputeEscrow(
         id, 
         challenger, 
@@ -177,58 +183,31 @@ export const useStellarPayment = (
       );
       
       if (result.success) {
-        await getPaymentStatus(id);
+        const status = await sdk.paymentsInstance.getPaymentStatus(id);
+        dispatch({ type: 'SET_PAYMENT_STATUS', paymentStatus: status });
       }
       
       return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to dispute escrow';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [sdk, getPaymentStatus, clearError]);
+    }, undefined);
+  }, [sdk, run]);
 
   const getExchangeRate = useCallback(async (
     request: ExchangeRateRequest
   ): Promise<ExchangeRateResult> => {
-    try {
-      setLoading(true);
-      clearError();
-      
-      const result = await sdk.paymentsInstance.getExchangeRate(request);
-      setState(prev => ({ ...prev, exchangeRate: result }));
-      
-      return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get exchange rate';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [sdk, clearError]);
+    return run(
+      () => sdk.paymentsInstance.getExchangeRate(request),
+      (result) => dispatch({ type: 'SET_EXCHANGE_RATE', exchangeRate: result }),
+    );
+  }, [sdk, run]);
 
   const checkCompliance = useCallback(async (
     request: ComplianceRequest
   ): Promise<ComplianceCheckResult> => {
-    try {
-      setLoading(true);
-      clearError();
-      
-      const result = await sdk.paymentsInstance.checkCompliance(request);
-      setState(prev => ({ ...prev, complianceCheck: result }));
-      
-      return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to check compliance';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [sdk, clearError]);
+    return run(
+      () => sdk.paymentsInstance.checkCompliance(request),
+      (result) => dispatch({ type: 'SET_COMPLIANCE_CHECK', complianceCheck: result }),
+    );
+  }, [sdk, run]);
 
   const refreshStatus = useCallback(async () => {
     if (escrowId) {
