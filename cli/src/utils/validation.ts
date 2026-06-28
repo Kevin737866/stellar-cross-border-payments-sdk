@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { StrKey } from 'stellar-sdk';
+import { isValidStellarPublicKey } from '@stellar-cross-border/sdk';
 import { PaymentRecord, ValidationResult } from '../types';
 import * as logger from './logger';
 
@@ -30,11 +30,7 @@ export function validateRequiredOptions(
 }
 
 export function validateStellarAddress(address: string): boolean {
-  try {
-    return StrKey.isValidEd25519PublicKey(address);
-  } catch {
-    return false;
-  }
+  return isValidStellarPublicKey(address);
 }
 
 export async function validateDestination(

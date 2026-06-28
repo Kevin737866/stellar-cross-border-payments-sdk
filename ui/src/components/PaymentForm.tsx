@@ -12,6 +12,10 @@ import {
 import { StellarCrossBorderSDK } from '@stellar-cross-border/sdk';
 import { PaymentRequest, PaymentOptions } from '@stellar-cross-border/sdk';
 import {
+  AddressValidator,
+  defaultStellarAddressValidator,
+} from '@stellar-cross-border/sdk';
+import {
   TokenEntry,
   TokenMetadataSource,
   DEFAULT_TOKENS,
@@ -51,8 +55,11 @@ interface PaymentFormData {
  *
  * Returning `true` means the address is valid; returning a string provides a
  * human-readable error message; returning `false` shows a generic error.
+ *
+ * Re-exported from `@stellar-cross-border/sdk` for consumers who import
+ * directly from this component file.
  */
-export type AddressValidator = (address: string) => boolean | string;
+export type { AddressValidator };
 
 export interface PaymentFormProps {
   /** SDK instance — used only for submitting payments, NOT for validation. */
@@ -81,15 +88,6 @@ export interface PaymentFormProps {
   onSuccess?: (result: any) => void;
   onError?: (error: string) => void;
 }
-
-// ---------------------------------------------------------------------------
-// Default validator (fallback when no prop is supplied)
-// ---------------------------------------------------------------------------
-
-const defaultAddressValidator: AddressValidator = (address: string) => {
-  // Accepts G... (ed25519 public keys) and C... (Soroban contract addresses)
-  return /^[GC][A-Z2-7]{55}$/.test(address) || 'Enter a valid Stellar address (G… or C…).';
-};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -136,7 +134,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
    */
   const resolveValidator = useCallback(
     (address: string): boolean | string => {
-      const validator = validateAddress ?? defaultAddressValidator;
+      const validator = validateAddress ?? defaultStellarAddressValidator;
       const result = validator(address);
       if (result === true) return true;
       if (result === false) return 'Invalid Stellar address.';

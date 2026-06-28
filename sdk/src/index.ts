@@ -5,6 +5,13 @@ export { RateOptimizer } from './rateOptimizer';
 export { TrustlineService } from './trustlines';
 export { TransactionEventEmitter } from './events';
 export * from './types';
+export {
+  isValidStellarPublicKey,
+  isValidStellarContractAddress,
+  isValidStellarAddress,
+  defaultStellarAddressValidator,
+} from './validation';
+export type { AddressValidator } from './validation';
 
 import { StellarClient } from './client';
 import { StellarPayments } from './payments';
