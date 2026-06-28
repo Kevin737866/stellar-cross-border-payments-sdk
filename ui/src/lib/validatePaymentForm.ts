@@ -1,3 +1,7 @@
+import { isValidStellarAddress } from '@stellar-cross-border/sdk';
+
+export { isValidStellarAddress };
+
 export const SUPPORTED_TOKENS = ['XLM', 'USDC', 'EURC', 'yXLM'] as const;
 export type SupportedToken = typeof SUPPORTED_TOKENS[number];
 
@@ -58,9 +62,7 @@ export interface FormErrors {
 }
 
 // Stellar asset code: 1–12 uppercase alphanumeric characters
-const ASSET_CODE_RE   = /^[A-Z0-9]{1,12}$/;
-// Stellar public key (G...) — 56 base32 characters
-const STELLAR_ADDR_RE = /^[GC][A-Z2-7]{55}$/;
+const ASSET_CODE_RE = /^[A-Z0-9]{1,12}$/;
 
 const MAX_RELEASE_TIME_DAYS = 365 * 5; // 5 years
 
@@ -70,12 +72,12 @@ export function validatePaymentForm(values: PaymentFormValues): FormErrors {
   // ── Address validation ──────────────────────────────────────────────────────
   if (!values.sender)
     errors.sender = 'Sender address is required.';
-  else if (!STELLAR_ADDR_RE.test(values.sender))
+  else if (!isValidStellarAddress(values.sender))
     errors.sender = 'Enter a valid Stellar address.';
 
   if (!values.receiver)
     errors.receiver = 'Receiver address is required.';
-  else if (!STELLAR_ADDR_RE.test(values.receiver))
+  else if (!isValidStellarAddress(values.receiver))
     errors.receiver = 'Enter a valid Stellar address.';
   else if (values.receiver === values.sender)
     errors.receiver = 'Receiver must differ from sender.';
