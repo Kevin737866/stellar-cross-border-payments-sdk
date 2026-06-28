@@ -1,5 +1,18 @@
 import { Address, xdr } from 'stellar-sdk';
 
+// Re-export event and callback types so consumers can import from one place
+export type {
+  SDKCallbacks,
+  SDKEventMap,
+  TransactionSubmittedEvent,
+  TransactionConfirmedEvent,
+  TransactionFailedEvent,
+  EscrowCreatedEvent,
+  EscrowReleasedEvent,
+  EscrowRefundedEvent,
+  EscrowDisputedEvent,
+} from './events';
+
 // ─── Metadata helpers ────────────────────────────────────────────────────────
 
 /** Supported value types for SCVal metadata maps */

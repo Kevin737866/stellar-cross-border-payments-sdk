@@ -112,5 +112,6 @@ soroban/
 # Kiro IDE
 .kiro/
 
-# Pull request description
-pull_request.md
+# Pull request drafts
+pull-request*.md
+pr-*.md

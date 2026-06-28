@@ -29,6 +29,7 @@ import {
   PaymentStatus,
   TransactionResult,
 } from './types';
+import { TransactionEventEmitter } from './events';
 
 // ─── Primitive converters ────────────────────────────────────────────────────
 
@@ -123,9 +124,11 @@ export function toScValOption(value: xdr.ScVal | null): xdr.ScVal {
 
 export class StellarPayments {
   private client: StellarClient;
+  private emitter?: TransactionEventEmitter;
 
-  constructor(client: StellarClient) {
+  constructor(client: StellarClient, emitter?: TransactionEventEmitter) {
     this.client = client;
+    this.emitter = emitter;
   }
 
   private async buildPaymentTransaction(
@@ -174,12 +177,30 @@ export class StellarPayments {
       const transaction = builder.build();
 
       if (options.submit !== false) {
+        const txHash = transaction.hash().toString('hex');
+
+        // Emit: submitted
+        this.emitter?.emitSubmitted({ hash: txHash, timestamp: Date.now() });
+
         const result = await this.client.submitTransaction(transaction.toXDR());
 
         if (result.success && result.result) {
           const escrowId = this.extractEscrowIdFromResult(result.result);
+
+          // Emit: confirmed + escrow:created
+          this.emitter?.emitConfirmed({ hash: result.hash, result: result.result });
+          if (escrowId) {
+            this.emitter?.emitEscrowCreated({ escrowId, hash: result.hash, request });
+          }
+
           return { ...result, escrowId };
         }
+
+        // Emit: failed
+        this.emitter?.emitFailed({
+          hash: result.hash || txHash,
+          error: result.error ?? 'Payment creation failed',
+        });
 
         return {
           hash: result.hash,
@@ -195,10 +216,12 @@ export class StellarPayments {
         escrowId: '',
       };
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.emitter?.emitFailed({ hash: '', error: message });
       return {
         hash: '',
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: message,
         escrowId: '',
       };
     }
@@ -228,20 +251,31 @@ export class StellarPayments {
       transaction.sign(signer);
 
       if (options.submit !== false) {
-        return await this.client.submitTransaction(transaction.toXDR());
+        const txHash = transaction.hash().toString('hex');
+        this.emitter?.emitSubmitted({ hash: txHash, timestamp: Date.now() });
+
+        const result = await this.client.submitTransaction(transaction.toXDR());
+
+        if (result.success) {
+          this.emitter?.emitConfirmed({ hash: result.hash, result: result.result });
+          this.emitter?.emitEscrowReleased({ escrowId, hash: result.hash });
+        } else {
+          this.emitter?.emitFailed({
+            hash: result.hash || txHash,
+            error: result.error ?? 'Escrow release failed',
+          });
+        }
+
+        return result;
       }
 
       return { hash: transaction.hash().toString('hex'), success: true };
     } catch (error) {
-      return {
-        hash: '',
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.emitter?.emitFailed({ hash: '', error: message });
+      return { hash: '', success: false, error: message };
     }
   }
-
-  async refundEscrow(
     escrowId: string,
     signer: Keypair,
     options: PaymentOptions = {}
@@ -265,16 +299,29 @@ export class StellarPayments {
       transaction.sign(signer);
 
       if (options.submit !== false) {
-        return await this.client.submitTransaction(transaction.toXDR());
+        const txHash = transaction.hash().toString('hex');
+        this.emitter?.emitSubmitted({ hash: txHash, timestamp: Date.now() });
+
+        const result = await this.client.submitTransaction(transaction.toXDR());
+
+        if (result.success) {
+          this.emitter?.emitConfirmed({ hash: result.hash, result: result.result });
+          this.emitter?.emitEscrowRefunded({ escrowId, hash: result.hash });
+        } else {
+          this.emitter?.emitFailed({
+            hash: result.hash || txHash,
+            error: result.error ?? 'Escrow refund failed',
+          });
+        }
+
+        return result;
       }
 
       return { hash: transaction.hash().toString('hex'), success: true };
     } catch (error) {
-      return {
-        hash: '',
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.emitter?.emitFailed({ hash: '', error: message });
+      return { hash: '', success: false, error: message };
     }
   }
 
@@ -308,16 +355,29 @@ export class StellarPayments {
       transaction.sign(signer);
 
       if (options.submit !== false) {
-        return await this.client.submitTransaction(transaction.toXDR());
+        const txHash = transaction.hash().toString('hex');
+        this.emitter?.emitSubmitted({ hash: txHash, timestamp: Date.now() });
+
+        const result = await this.client.submitTransaction(transaction.toXDR());
+
+        if (result.success) {
+          this.emitter?.emitConfirmed({ hash: result.hash, result: result.result });
+          this.emitter?.emitEscrowDisputed({ escrowId, hash: result.hash, challenger, reason });
+        } else {
+          this.emitter?.emitFailed({
+            hash: result.hash || txHash,
+            error: result.error ?? 'Escrow dispute failed',
+          });
+        }
+
+        return result;
       }
 
       return { hash: transaction.hash().toString('hex'), success: true };
     } catch (error) {
-      return {
-        hash: '',
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.emitter?.emitFailed({ hash: '', error: message });
+      return { hash: '', success: false, error: message };
     }
   }
 
