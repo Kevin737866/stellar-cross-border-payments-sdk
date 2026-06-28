@@ -54,11 +54,13 @@ pub struct Dispute {
 
 // ─── Storage-key constants ───────────────────────────────────────────────────
 
-const ADMIN_KEY:     &str = "ADMIN";
-const INIT_KEY:      &str = "INITIALIZED";
-const ESCROW_KEY:    &str = "ESCROW";
-const DISPUTES_KEY:  &str = "DISPUTES";
-const EVIDENCE_KEY:  &str = "DISPUTE_EVIDENCE";
+const ADMIN_KEY:           &str = "ADMIN";
+const INIT_KEY:            &str = "INITIALIZED";
+const ESCROW_KEY:          &str = "ESCROW";
+const DISPUTES_KEY:        &str = "DISPUTES";
+const EVIDENCE_KEY:        &str = "DISPUTE_EVIDENCE";
+const DISPUTES_BY_ESCROW:  &str = "DISPUTES_BY_ESCROW";
+const DISPUTES_BY_USER:    &str = "DISPUTES_BY_USER";
 
 // ─── Stand-alone evidence helpers (used in tests) ────────────────────────────
 
@@ -102,7 +104,7 @@ pub trait EscrowTrait {
         challenger: Address,
         reason: Symbol,
         evidence: Vec<u8>,
-    ) -> bool;
+    ) -> BytesN<32>;
 
     fn resolve_dispute(
         env: Env,
@@ -116,7 +118,13 @@ pub trait EscrowTrait {
 
     fn get_dispute(env: Env, dispute_id: BytesN<32>) -> Dispute;
 
+    fn get_disputes_by_escrow(env: Env, escrow_id: BytesN<32>) -> Vec<BytesN<32>>;
+
+    fn get_dispute_by_escrow(env: Env, escrow_id: BytesN<32>) -> Option<Dispute>;
+
     fn get_user_escrows(env: Env, user: Address) -> Vec<BytesN<32>>;
+
+    fn get_user_disputes(env: Env, user: Address) -> Vec<BytesN<32>>;
 }
 
 #[contractimpl]
@@ -286,6 +294,7 @@ impl EscrowTrait for EscrowContract {
     //
     // Either party can open a dispute while the escrow is Pending.
     // Funds remain locked in the contract until resolve_dispute is called.
+    // Returns the dispute_id for reliable tracking and retrieval.
 
     fn dispute_escrow(
         env: Env,
@@ -293,7 +302,7 @@ impl EscrowTrait for EscrowContract {
         challenger: Address,
         reason: Symbol,
         evidence: Vec<u8>,
-    ) -> bool {
+    ) -> BytesN<32> {
         challenger.require_auth();
 
         let escrow_key = Symbol::new(&env, ESCROW_KEY);
@@ -329,23 +338,44 @@ impl EscrowTrait for EscrowContract {
 
         let dispute = Dispute {
             escrow_id: escrow_id.clone(),
-            challenger,
+            challenger: challenger.clone(),
             reason,
             evidence,
             created_at: env.ledger().timestamp(),
             resolved: false,
         };
 
+        // ── Store the dispute in main disputes map ──────────────────────────
         let disputes_key = Symbol::new(&env, DISPUTES_KEY);
         let mut disputes = env
             .storage()
             .persistent()
             .get::<_, Map<BytesN<32>, Dispute>>(&disputes_key)
             .unwrap_or_else(|| Map::new(&env));
-        disputes.set(dispute_id, dispute);
+        disputes.set(dispute_id.clone(), dispute);
         env.storage().persistent().set(&disputes_key, &disputes);
 
-        true
+        // ── Index dispute by escrow_id for fast lookup ──────────────────────
+        let escrow_disputes_key = (Symbol::new(&env, DISPUTES_BY_ESCROW), escrow_id.clone());
+        let mut escrow_disputes = env
+            .storage()
+            .persistent()
+            .get::<_, Vec<BytesN<32>>>(&escrow_disputes_key)
+            .unwrap_or_else(|| Vec::new(&env));
+        escrow_disputes.push_back(dispute_id.clone());
+        env.storage().persistent().set(&escrow_disputes_key, &escrow_disputes);
+
+        // ── Index dispute by challenger user for user's dispute history ─────
+        let user_disputes_key = (Symbol::new(&env, DISPUTES_BY_USER), challenger.clone());
+        let mut user_disputes = env
+            .storage()
+            .persistent()
+            .get::<_, Vec<BytesN<32>>>(&user_disputes_key)
+            .unwrap_or_else(|| Vec::new(&env));
+        user_disputes.push_back(dispute_id.clone());
+        env.storage().persistent().set(&user_disputes_key, &user_disputes);
+
+        dispute_id
     }
 
     // ── resolve_dispute ──────────────────────────────────────────────────────
@@ -453,11 +483,44 @@ impl EscrowTrait for EscrowContract {
             .unwrap_or_else(|| panic!("Dispute not found"))
     }
 
+    /// Get all disputes associated with a specific escrow.
+    /// Returns a vector of dispute IDs for the given escrow.
+    fn get_disputes_by_escrow(env: Env, escrow_id: BytesN<32>) -> Vec<BytesN<32>> {
+        let escrow_disputes_key = (Symbol::new(&env, DISPUTES_BY_ESCROW), escrow_id);
+        env.storage()
+            .persistent()
+            .get::<_, Vec<BytesN<32>>>(&escrow_disputes_key)
+            .unwrap_or_else(|| Vec::new(&env))
+    }
+
+    /// Get the most recent (or only) dispute for an escrow if it exists.
+    /// Useful for simple escrow + dispute workflows.
+    fn get_dispute_by_escrow(env: Env, escrow_id: BytesN<32>) -> Option<Dispute> {
+        let dispute_ids = Self::get_disputes_by_escrow(env.clone(), escrow_id);
+        
+        if dispute_ids.len() > 0 {
+            // Return the last (most recent) dispute
+            let last_dispute_id = dispute_ids.get(dispute_ids.len() - 1);
+            Some(Self::get_dispute(env, last_dispute_id))
+        } else {
+            None
+        }
+    }
+
     fn get_user_escrows(env: Env, user: Address) -> Vec<BytesN<32>> {
         let user_key = (Symbol::new(&env, "USER_ESCROWS"), user);
         env.storage()
             .persistent()
             .get::<_, Vec<BytesN<32>>>(&user_key)
+            .unwrap_or_else(|| Vec::new(&env))
+    }
+
+    /// Get all disputes initiated by a specific user (as challenger).
+    fn get_user_disputes(env: Env, user: Address) -> Vec<BytesN<32>> {
+        let user_disputes_key = (Symbol::new(&env, DISPUTES_BY_USER), user);
+        env.storage()
+            .persistent()
+            .get::<_, Vec<BytesN<32>>>(&user_disputes_key)
             .unwrap_or_else(|| Vec::new(&env))
     }
 }
@@ -493,5 +556,175 @@ mod tests {
     fn test_missing_evidence_returns_none() {
         let env = Env::default();
         assert!(get_evidence(&env, 999).is_none());
+    }
+
+    #[test]
+    fn test_dispute_creation_returns_dispute_id() {
+        let env = Env::default();
+        let contract = EscrowContract;
+        
+        let admin = Address::generate(&env);
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        let challenger = sender.clone();
+        
+        // Initialize
+        EscrowTrait::initialize(env.clone(), admin.clone());
+        
+        // Create a token for the escrow
+        let token = Address::generate(&env);
+        
+        // Create escrow
+        let escrow_id = EscrowTrait::create_escrow(
+            env.clone(),
+            sender.clone(),
+            receiver.clone(),
+            1000,
+            token.clone(),
+            env.ledger().timestamp() + 1000,
+            Map::new(&env),
+        );
+        
+        // Create dispute
+        let dispute_id = EscrowTrait::dispute_escrow(
+            env.clone(),
+            escrow_id.clone(),
+            challenger.clone(),
+            Symbol::new(&env, "PAYMENT_NOT_RECEIVED"),
+            Vec::new(&env),
+        );
+        
+        // Verify dispute_id is returned (not a bool)
+        assert!(!dispute_id.is_zero()); // Should be a non-zero hash
+        
+        // Verify we can retrieve the dispute by ID
+        let dispute = EscrowTrait::get_dispute(env.clone(), dispute_id);
+        assert_eq!(dispute.escrow_id, escrow_id);
+        assert_eq!(dispute.challenger, challenger);
+    }
+
+    #[test]
+    fn test_get_disputes_by_escrow() {
+        let env = Env::default();
+        let contract = EscrowContract;
+        
+        let admin = Address::generate(&env);
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        
+        // Initialize
+        EscrowTrait::initialize(env.clone(), admin.clone());
+        
+        let token = Address::generate(&env);
+        
+        // Create escrow
+        let escrow_id = EscrowTrait::create_escrow(
+            env.clone(),
+            sender.clone(),
+            receiver.clone(),
+            1000,
+            token.clone(),
+            env.ledger().timestamp() + 1000,
+            Map::new(&env),
+        );
+        
+        // Create dispute
+        let dispute_id = EscrowTrait::dispute_escrow(
+            env.clone(),
+            escrow_id.clone(),
+            sender.clone(),
+            Symbol::new(&env, "PAYMENT_NOT_RECEIVED"),
+            Vec::new(&env),
+        );
+        
+        // Retrieve disputes by escrow ID
+        let dispute_ids = EscrowTrait::get_disputes_by_escrow(env.clone(), escrow_id.clone());
+        assert_eq!(dispute_ids.len(), 1);
+        assert_eq!(dispute_ids.get(0), dispute_id);
+    }
+
+    #[test]
+    fn test_get_dispute_by_escrow_returns_latest() {
+        let env = Env::default();
+        let contract = EscrowContract;
+        
+        let admin = Address::generate(&env);
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        
+        // Initialize
+        EscrowTrait::initialize(env.clone(), admin.clone());
+        
+        let token = Address::generate(&env);
+        
+        // Create escrow
+        let escrow_id = EscrowTrait::create_escrow(
+            env.clone(),
+            sender.clone(),
+            receiver.clone(),
+            1000,
+            token.clone(),
+            env.ledger().timestamp() + 1000,
+            Map::new(&env),
+        );
+        
+        // Create first dispute
+        let _dispute_id_1 = EscrowTrait::dispute_escrow(
+            env.clone(),
+            escrow_id.clone(),
+            sender.clone(),
+            Symbol::new(&env, "FIRST_DISPUTE"),
+            Vec::new(&env),
+        );
+        
+        // Retrieve dispute by escrow (convenience method)
+        let dispute_opt = EscrowTrait::get_dispute_by_escrow(env.clone(), escrow_id.clone());
+        assert!(dispute_opt.is_some());
+        let dispute = dispute_opt.unwrap();
+        assert_eq!(dispute.escrow_id, escrow_id);
+    }
+
+    #[test]
+    fn test_get_user_disputes() {
+        let env = Env::default();
+        let contract = EscrowContract;
+        
+        let admin = Address::generate(&env);
+        let user1 = Address::generate(&env);
+        let user2 = Address::generate(&env);
+        
+        // Initialize
+        EscrowTrait::initialize(env.clone(), admin.clone());
+        
+        let token = Address::generate(&env);
+        
+        // Create escrow 1
+        let escrow_id_1 = EscrowTrait::create_escrow(
+            env.clone(),
+            user1.clone(),
+            user2.clone(),
+            1000,
+            token.clone(),
+            env.ledger().timestamp() + 1000,
+            Map::new(&env),
+        );
+        
+        // User1 creates dispute
+        let dispute_id_1 = EscrowTrait::dispute_escrow(
+            env.clone(),
+            escrow_id_1.clone(),
+            user1.clone(),
+            Symbol::new(&env, "DISPUTE1"),
+            Vec::new(&env),
+        );
+        
+        // Retrieve user1's disputes
+        let user_disputes = EscrowTrait::get_user_disputes(env.clone(), user1.clone());
+        assert_eq!(user_disputes.len(), 1);
+        assert_eq!(user_disputes.get(0), dispute_id_1);
+        
+        // User2 should have no disputes created
+        let user2_disputes = EscrowTrait::get_user_disputes(env.clone(), user2.clone());
+        assert_eq!(user2_disputes.len(), 0);
     }
 }

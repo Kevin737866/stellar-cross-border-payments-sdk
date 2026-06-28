@@ -122,6 +122,7 @@ async function escrowDisputeResolution() {
     }
 
     console.log('✅ Dispute created successfully');
+    console.log(`Dispute ID: ${disputeResult.disputeId}`);
     console.log(`Dispute Transaction: ${disputeResult.hash}\n`);
 
     // Step 5: Check escrow status after dispute
@@ -170,11 +171,19 @@ async function escrowDisputeResolution() {
     // Step 8: Resolve dispute in favor of buyer
     console.log('⚖️  Resolving dispute in favor of buyer...');
     
-    // In a real implementation, you would call the resolve_dispute method
-    // For this example, we'll simulate the resolution
-    const disputeId = 'DISPUTE_ID_HERE'; // This would come from the dispute creation
-    
-    // Simulate admin resolution
+    // Use the dispute ID returned from the creation to resolve it
+    const resolveResult = await sdk.paymentsInstance.resolveDispute(
+      disputeResult.disputeId,
+      true, // in_favor_of_challenger (buyer gets refund)
+      adminKeypair,
+      { feeBump: true }
+    );
+
+    if (!resolveResult.success) {
+      console.log(`❌ Dispute resolution failed: ${resolveResult.error}`);
+      return;
+    }
+
     console.log('✅ Dispute resolved');
     console.log(`Decision: Refund to buyer`);
     console.log(`Reason: Seller failed to deliver valid product\n`);
