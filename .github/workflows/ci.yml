@@ -83,6 +83,10 @@ jobs:
         working-directory: ./sdk
         run: npm test
 
+      - name: Smoke test — cross-border payment integration
+        working-directory: ./sdk
+        run: npx jest --testPathPattern=crossBorderPayment.integration.test --no-coverage
+
       - name: Test (CLI)
         working-directory: ./cli
         run: npm test

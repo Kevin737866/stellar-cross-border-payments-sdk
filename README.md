@@ -26,7 +26,7 @@ A comprehensive SDK for building cross-border payment applications on the Stella
 - [TypeScript SDK](#typescript-sdk)
 - [React Components](#react-components)
 - [Examples](#examples)
-- [Configuration](#configuration)
+- [Configuration](#️-configuration)
 - [API Reference](#api-reference)
 - [Building](#building)
 - [Testing](#testing)
@@ -607,28 +607,102 @@ groups via `getIncompleteGroups` and re-check Horizon for their status.
 
 ### Environment Variables
 
+Copy `.env.example` to `.env` and fill in the values before running the SDK or CLI:
+
 ```bash
-# Stellar Network
+cp .env.example .env
+```
+
+The sections below explain every variable, which layer consumes it, and when you might prefer an explicit CLI flag instead.
+
+---
+
+#### Credentials
+
+| Variable | Required | Description |
+|---|---|---|
+| `ADMIN_SECRET_KEY` | **Yes** | Stellar secret key (`S…`) used to sign and submit transactions. Never commit this value. |
+| `ADMIN_PUBLIC_KEY` | No | Corresponding public key (`G…`). Informational — the SDK derives it from `ADMIN_SECRET_KEY` at runtime. |
+
+> **CLI flag alternative**: Pass `--source-secret` on any `stellar-payout` command to override `ADMIN_SECRET_KEY` for a single run. Prefer the flag in CI pipelines where secrets are injected per-job.
+
+---
+
+#### Contract Addresses
+
+These three variables identify the deployed Soroban contracts. Both the TypeScript SDK and the CLI require them at runtime — they are not known at compile time.
+
+| Variable | Required | Description |
+|---|---|---|
+| `ESCROW_CONTRACT_ADDRESS` | **Yes** | Address of the deployed escrow contract (`C…`). Controls time-locked payment creation, release, and refund. |
+| `RATE_ORACLE_CONTRACT_ADDRESS` | **Yes** | Address of the deployed rate-oracle contract. Used when fetching on-chain exchange rates. |
+| `COMPLIANCE_CONTRACT_ADDRESS` | **Yes** | Address of the deployed compliance contract. Called during KYC/AML checks before every payment. |
+
+> **CLI flag alternative**: Pass `--escrow-contract`, `--rate-oracle-contract`, and `--compliance-contract` to override per-run. Useful when switching between testnet and mainnet deployments in the same shell session.
+
+> **SDK usage**: Supply these addresses in the `contracts` object passed to `new StellarCrossBorderSDK(config, contracts)`. The SDK does not read them from the environment automatically — your application code must pass them in.
+
+---
+
+#### Network
+
+| Variable | Default | Description |
+|---|---|---|
+| `HORIZON_URL` | `https://horizon-testnet.stellar.org` | Horizon REST endpoint used by the SDK client and CLI for account lookups and transaction submission. |
+| `SOROBAN_RPC_URL` | `https://soroban-testnet.stellar.org` | Soroban RPC endpoint used by the SDK to simulate and invoke smart contracts. |
+| `NETWORK_PASSPHRASE` | `Test SDF Network ; September 2015` | Network identifier included in every transaction envelope. Must match the network you deploy contracts to. |
+| `STELLAR_NETWORK` | `testnet` | Shorthand (`testnet` or `mainnet`) used by the CLI. Setting this to `mainnet` automatically switches `HORIZON_URL` and `NETWORK_PASSPHRASE` to production values unless they are also set explicitly. |
+
+> **CLI flag alternative**: Pass `--network testnet` or `--network mainnet` and `--horizon-url <url>` to override per-run.
+
+---
+
+#### CLI Defaults
+
+These variables set default behaviour for the `stellar-payout` CLI and can be overridden by the corresponding flag on any command.
+
+| Variable | CLI flag | Default | Description |
+|---|---|---|---|
+| `MAX_FEE` | `--max-fee` | `10000` | Maximum fee (in stroops) the CLI will accept for a transaction. Commands abort if network fees exceed this. |
+| `DB_PATH` | `--db-path` | `./stellar-payout.db` | Path to the SQLite database used for crash-recovery state. |
+
+---
+
+#### Sample `.env` for Testnet
+
+```dotenv
+# --- Credentials ---
+ADMIN_SECRET_KEY=SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ADMIN_PUBLIC_KEY=GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# --- Contract Addresses ---
+ESCROW_CONTRACT_ADDRESS=CXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+RATE_ORACLE_CONTRACT_ADDRESS=CXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+COMPLIANCE_CONTRACT_ADDRESS=CXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# --- Network ---
 HORIZON_URL=https://horizon-testnet.stellar.org
 SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
 NETWORK_PASSPHRASE=Test SDF Network ; September 2015
-
-# CLI defaults (optional; override the corresponding --flag)
 STELLAR_NETWORK=testnet
+
+# --- CLI Defaults ---
 MAX_FEE=10000
 DB_PATH=./stellar-payout.db
-
-# Contract Addresses
-ESCROW_CONTRACT_ADDRESS=YOUR_ESCROW_CONTRACT_ADDRESS
-RATE_ORACLE_CONTRACT_ADDRESS=YOUR_RATE_ORACLE_CONTRACT_ADDRESS
-COMPLIANCE_CONTRACT_ADDRESS=YOUR_COMPLIANCE_CONTRACT_ADDRESS
-
-# Admin Configuration
-ADMIN_SECRET_KEY=YOUR_ADMIN_SECRET_KEY
-ADMIN_PUBLIC_KEY=YOUR_ADMIN_PUBLIC_KEY
 ```
 
-See [docs/deployment.md](docs/deployment.md) for the full list of environment variables and their defaults.
+For a full list of optional variables (fee tuning, compliance thresholds, UI config, external services), see `.env.example` and [docs/deployment.md](docs/deployment.md).
+
+---
+
+#### Env vars vs. CLI flags — when to use which
+
+| Scenario | Recommendation |
+|---|---|
+| Long-running service / always the same network | Set env vars in `.env` or your deployment environment. |
+| CI/CD pipeline with secrets injected per-job | Use CLI flags (`--source-secret`, `--escrow-contract`, etc.) so secrets are never written to disk. |
+| Switching between testnet and mainnet in one session | Use `--network` / `--horizon-url` flags; leave `.env` pointing at testnet as a safe default. |
+| SDK consumer (TypeScript application) | Read contract addresses from your own config layer and pass them to `new StellarCrossBorderSDK(config, contracts)`. The SDK does not auto-load `.env`. |
 
 ## 📖 API Reference
 
