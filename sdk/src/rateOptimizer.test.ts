@@ -281,7 +281,7 @@ describe('RateOptimizer oracle rate precision', () => {
     expect(quote.confidence).toBe(50);
   });
 
-  it('returns null when getExchangeRate throws', async () => {
+  it('rethrows when getExchangeRate fails', async () => {
     const client    = new StellarClient(TEST_CONFIG, TEST_CONTRACTS);
     const optimizer = new RateOptimizer(client);
 
@@ -289,8 +289,7 @@ describe('RateOptimizer oracle rate precision', () => {
       new Error('rate not found')
     );
 
-    const quote = await (optimizer as any).getOracleQuote('EUR', 'USD', '100');
-    expect(quote).toBeNull();
+    await expect((optimizer as any).getOracleQuote('EUR', 'USD', '100')).rejects.toThrow('rate not found');
   });
 });
 
@@ -322,7 +321,7 @@ describe('RateOptimizer external venue (placeholder)', () => {
 describe('RateOptimizer DEX venue delegation', () => {
   afterEach(() => jest.restoreAllMocks());
 
-  it('returns null when PathPaymentService.findBestPath throws', async () => {
+  it('rethrows when PathPaymentService.findBestPath fails', async () => {
     const client    = new StellarClient(TEST_CONFIG, TEST_CONTRACTS);
     const optimizer = new RateOptimizer(client);
 
@@ -330,8 +329,7 @@ describe('RateOptimizer DEX venue delegation', () => {
       new Error('No path found')
     );
 
-    const quote = await (optimizer as any).getDexQuote(FROM, TO, AMT);
-    expect(quote).toBeNull();
+    await expect((optimizer as any).getDexQuote(FROM, TO, AMT)).rejects.toThrow('No path found');
   });
 
   it('maps the PathPaymentService result to an OptimizedRate with venue DEX', async () => {

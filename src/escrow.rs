@@ -277,6 +277,11 @@ impl EscrowTrait for EscrowContract {
             "Escrow is not in pending status"
         );
 
+        assert!(
+            escrow.release_time <= env.ledger().timestamp(),
+            "Escrow is still time-locked"
+        );
+
         escrow.sender.require_auth();
 
         // ── Transfer tokens: contract → sender ──────────────────────────────

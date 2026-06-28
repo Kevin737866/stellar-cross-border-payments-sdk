@@ -115,10 +115,21 @@ export class RateOptimizer {
     const fromSymbol = this.getAssetSymbol(fromAsset);
     const toSymbol   = this.getAssetSymbol(toAsset);
 
+    const failures: { venue: string; reason: string }[] = [];
+
     const [dexQuote, oracleQuote, externalQuote] = await Promise.all([
-      this.getDexQuote(fromAsset, toAsset, amount),
-      this.getOracleQuote(fromSymbol, toSymbol, amount),
-      this.getExternalQuote(fromSymbol, toSymbol, amount),
+      this.getDexQuote(fromAsset, toAsset, amount).catch((e: Error) => {
+        failures.push({ venue: 'DEX', reason: e.message });
+        return null;
+      }),
+      this.getOracleQuote(fromSymbol, toSymbol, amount).catch((e: Error) => {
+        failures.push({ venue: 'Oracle', reason: e.message });
+        return null;
+      }),
+      this.getExternalQuote(fromSymbol, toSymbol, amount).catch((e: Error) => {
+        failures.push({ venue: 'External', reason: e.message });
+        return null;
+      }),
     ]);
 
     const quotes: OptimizedRate[] = [];
@@ -127,7 +138,10 @@ export class RateOptimizer {
     if (externalQuote) quotes.push(externalQuote);
 
     if (quotes.length === 0) {
-      throw new Error(`No execution path found for ${fromAsset} -> ${toAsset}`);
+      const details = failures.map(f => `${f.venue}: ${f.reason}`).join('; ');
+      throw new Error(
+        `No execution path found for ${fromAsset} -> ${toAsset}. Failures: ${details}`
+      );
     }
 
     // Sort by best rate (highest amount for destination)
@@ -148,21 +162,17 @@ export class RateOptimizer {
     to: string,
     amount: string
   ): Promise<OptimizedRate | null> {
-    try {
-      const fromA   = this.parseAsset(from);
-      const toA     = this.parseAsset(to);
-      const result: BestPathResult = await this.pathService.findBestPath(fromA, toA, amount);
+    const fromA   = this.parseAsset(from);
+    const toA     = this.parseAsset(to);
+    const result: BestPathResult = await this.pathService.findBestPath(fromA, toA, amount);
 
-      return {
-        venue:      'DEX',
-        rate:       result.rate.toString(),
-        amount:     result.destinationAmount,
-        path:       result.path,
-        confidence: 95,
-      };
-    } catch {
-      return null;
-    }
+    return {
+      venue:      'DEX',
+      rate:       result.rate.toString(),
+      amount:     result.destinationAmount,
+      path:       result.path,
+      confidence: 95,
+    };
   }
 
   /**
@@ -180,25 +190,21 @@ export class RateOptimizer {
     to: number | string,
     amount: string
   ): Promise<OptimizedRate | null> {
-    try {
-      const request: ExchangeRateRequest = {
-        from_currency: from,
-        to_currency:   to.toString(),
-      };
-      const result = await this.payments.getExchangeRate(request);
+    const request: ExchangeRateRequest = {
+      from_currency: from,
+      to_currency:   to.toString(),
+    };
+    const result = await this.payments.getExchangeRate(request);
 
-      const rateBN    = new BigNumber(result.rate).dividedBy(1_000_000);
-      const destAmount = new BigNumber(amount).times(rateBN).toFixed(7);
+    const rateBN    = new BigNumber(result.rate).dividedBy(1_000_000);
+    const destAmount = new BigNumber(amount).times(rateBN).toFixed(7);
 
-      return {
-        venue:      'Oracle',
-        rate:       rateBN.toString(),
-        amount:     destAmount,
-        confidence: result.aggregated.sources_count > 0 ? 90 : 50,
-      };
-    } catch {
-      return null;
-    }
+    return {
+      venue:      'Oracle',
+      rate:       rateBN.toString(),
+      amount:     destAmount,
+      confidence: result.aggregated.sources_count > 0 ? 90 : 50,
+    };
   }
 
   /**
