@@ -221,10 +221,42 @@ impl ComplianceTrait for ComplianceContract {
         let records = env.storage().persistent().get::<_, Map<Address, ComplianceRecord>>(&records_key)
             .unwrap_or_else(|| Map::new(&env));
 
-        let from_record = records.get(from_user.clone())
-            .unwrap_or_else(|| panic!("Sender not registered"));
-        let to_record = records.get(to_user.clone())
-            .unwrap_or_else(|| panic!("Receiver not registered"));
+        let from_record = match records.get(from_user.clone()) {
+            Some(record) => record,
+            None => {
+                return ComplianceCheck {
+                    transaction_id,
+                    from_user: from_user.clone(),
+                    to_user: to_user.clone(),
+                    amount,
+                    currency,
+                    jurisdiction_from,
+                    jurisdiction_to,
+                    timestamp: env.ledger().timestamp(),
+                    approved: false,
+                    reason: Symbol::new(&env, "SENDER_NOT_REGISTERED"),
+                    rules_triggered: Vec::new(&env),
+                };
+            }
+        };
+        let to_record = match records.get(to_user.clone()) {
+            Some(record) => record,
+            None => {
+                return ComplianceCheck {
+                    transaction_id,
+                    from_user,
+                    to_user,
+                    amount,
+                    currency,
+                    jurisdiction_from,
+                    jurisdiction_to,
+                    timestamp: env.ledger().timestamp(),
+                    approved: false,
+                    reason: Symbol::new(&env, "RECEIVER_NOT_REGISTERED"),
+                    rules_triggered: Vec::new(&env),
+                };
+            }
+        };
 
         if from_record.risk_level == RiskLevel::Restricted || to_record.risk_level == RiskLevel::Restricted {
             return ComplianceCheck {
