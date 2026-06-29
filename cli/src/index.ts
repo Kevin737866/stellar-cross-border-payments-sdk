@@ -96,12 +96,33 @@ program
 // ── status command ───────────────────────────────────────────────────
 program
   .command('status')
-  .description('Real-time monitoring of batch payment status with Horizon streaming')
-  .option('-b, --batch-id <id>', 'Batch ID to monitor (shows recent batches if omitted)')
-  .option('-f, --follow', 'Stream real-time updates', false)
-  .option('--horizon-url <url>', 'Horizon URL (or HORIZON_URL)', envDefault('HORIZON_URL', DEFAULT_HORIZON_URL))
-  .option('--db-path <path>', 'SQLite database path (or DB_PATH)', envDefault('DB_PATH', DEFAULT_DB_PATH))
-  .option('--verbose', 'Enable verbose logging', false)
+  .description(
+    'Query batch payment status from the local database.\n' +
+    '  Omit --batch-id to list the 10 most recent batches.\n' +
+    '  Use --follow to stream live progress while a batch is running.\n\n' +
+    '  Examples:\n' +
+    '    stellar-payout status\n' +
+    '    stellar-payout status --batch-id <id>\n' +
+    '    stellar-payout status --batch-id <id> --follow\n' +
+    '    stellar-payout status --batch-id <id> --follow --horizon-url https://horizon.stellar.org'
+  )
+  .option('-b, --batch-id <id>', 'Batch ID to inspect (omit to list 10 most recent batches)')
+  .option(
+    '-f, --follow',
+    'Stream live updates: polls the local DB every 2 s and Horizon every 5 s until the batch completes (Ctrl+C to stop)',
+    false,
+  )
+  .option(
+    '--horizon-url <url>',
+    'Horizon endpoint used for transaction streaming with --follow (or HORIZON_URL)',
+    envDefault('HORIZON_URL', DEFAULT_HORIZON_URL),
+  )
+  .option(
+    '--db-path <path>',
+    'Path to the SQLite database written by "stellar-payout batch" — must match the path used when the batch was started (or DB_PATH)',
+    envDefault('DB_PATH', DEFAULT_DB_PATH),
+  )
+  .option('--verbose', 'Print debug output including the Horizon stream endpoint', false)
   .action(async (opts) => {
     if (opts.verbose) {
       setLogLevel(LogLevel.DEBUG);
