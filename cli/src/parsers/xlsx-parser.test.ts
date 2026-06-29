@@ -40,7 +40,7 @@ function parseRows(rows: SheetRow[]) {
 }
 
 // ---------------------------------------------------------------------------
-// Sample row data
+// Sample row data — canonical headers
 // ---------------------------------------------------------------------------
 
 const FULL_ROWS: SheetRow[] = [
@@ -70,91 +70,349 @@ const NUMERIC_AMOUNT_ROW: SheetRow[] = [
   { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: 77 },
 ];
 
-const INVALID_ESCROW_ROW: SheetRow[] = [
-  {
-    destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2',
-    amount: '10',
-    escrow_duration: 'bad',
-  },
-];
-
 // ---------------------------------------------------------------------------
-// Tests — valid inputs
+// Tests — valid inputs (canonical headers)
 // ---------------------------------------------------------------------------
 
 describe('parseXLSX — valid inputs', () => {
-  it('returns one record per data row', () => {
-    expect(parseRows(FULL_ROWS)).toHaveLength(2);
+  it('returns one record per valid data row', () => {
+    const { records, errors } = parseRows(FULL_ROWS);
+    expect(records).toHaveLength(2);
+    expect(errors).toHaveLength(0);
   });
 
   it('maps destination correctly', () => {
-    const [first] = parseRows(FULL_ROWS);
-    expect(first.destination).toBe('GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2');
+    const { records } = parseRows(FULL_ROWS);
+    expect(records[0].destination).toBe('GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2');
   });
 
   it('maps string amount correctly', () => {
-    const [first] = parseRows(FULL_ROWS);
-    expect(first.amount).toBe('100');
+    const { records } = parseRows(FULL_ROWS);
+    expect(records[0].amount).toBe('100');
   });
 
   it('coerces numeric amount to string', () => {
-    const [, second] = parseRows(FULL_ROWS);
-    expect(second.amount).toBe('50');
-    expect(typeof second.amount).toBe('string');
+    const { records } = parseRows(FULL_ROWS);
+    expect(records[1].amount).toBe('50');
+    expect(typeof records[1].amount).toBe('string');
   });
 
   it('maps asset correctly', () => {
-    const [first] = parseRows(FULL_ROWS);
-    expect(first.asset).toBe('USDC');
+    const { records } = parseRows(FULL_ROWS);
+    expect(records[0].asset).toBe('USDC');
   });
 
   it('maps asset_issuer correctly', () => {
-    const [first] = parseRows(FULL_ROWS);
-    expect(first.asset_issuer).toBe('GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN');
+    const { records } = parseRows(FULL_ROWS);
+    expect(records[0].asset_issuer).toBe('GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN');
   });
 
   it('maps memo correctly', () => {
-    const [first] = parseRows(FULL_ROWS);
-    expect(first.memo).toBe('Invoice-001');
+    const { records } = parseRows(FULL_ROWS);
+    expect(records[0].memo).toBe('Invoice-001');
   });
 
   it('maps escrow_duration as a number', () => {
-    const [first] = parseRows(FULL_ROWS);
-    expect(first.escrow_duration).toBe(3600);
+    const { records } = parseRows(FULL_ROWS);
+    expect(records[0].escrow_duration).toBe(3600);
   });
 
   it('maps second row independently', () => {
-    const [, second] = parseRows(FULL_ROWS);
-    expect(second.destination).toBe('GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGVA2XM9DWBF32LLVBF3');
-    expect(second.amount).toBe('50');
-    expect(second.asset).toBe('XLM');
-    expect(second.escrow_duration).toBe(0);
+    const { records } = parseRows(FULL_ROWS);
+    expect(records[1].destination).toBe('GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGVA2XM9DWBF32LLVBF3');
+    expect(records[1].amount).toBe('50');
+    expect(records[1].asset).toBe('XLM');
+    expect(records[1].escrow_duration).toBe(0);
+  });
+
+  it('coerces numeric cell amount to string', () => {
+    const { records } = parseRows(NUMERIC_AMOUNT_ROW);
+    expect(records[0].amount).toBe('77');
+    expect(typeof records[0].amount).toBe('string');
   });
 });
 
 // ---------------------------------------------------------------------------
-// Tests — default / fallback values
+// Tests — default / fallback values for missing optional columns
 // ---------------------------------------------------------------------------
 
 describe('parseXLSX — default values for missing optional columns', () => {
   it('defaults asset to XLM', () => {
-    const [record] = parseRows(MINIMAL_ROWS);
-    expect(record.asset).toBe('XLM');
+    const { records } = parseRows(MINIMAL_ROWS);
+    expect(records[0].asset).toBe('XLM');
   });
 
   it('defaults asset_issuer to empty string', () => {
-    const [record] = parseRows(MINIMAL_ROWS);
-    expect(record.asset_issuer).toBe('');
+    const { records } = parseRows(MINIMAL_ROWS);
+    expect(records[0].asset_issuer).toBe('');
   });
 
   it('defaults memo to empty string', () => {
-    const [record] = parseRows(MINIMAL_ROWS);
-    expect(record.memo).toBe('');
+    const { records } = parseRows(MINIMAL_ROWS);
+    expect(records[0].memo).toBe('');
   });
 
   it('defaults escrow_duration to 0', () => {
-    const [record] = parseRows(MINIMAL_ROWS);
-    expect(record.escrow_duration).toBe(0);
+    const { records } = parseRows(MINIMAL_ROWS);
+    expect(records[0].escrow_duration).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — header normalisation
+// ---------------------------------------------------------------------------
+
+describe('parseXLSX — header normalisation', () => {
+  it('accepts uppercase headers (DESTINATION, AMOUNT)', () => {
+    const { records, errors } = parseRows([
+      { DESTINATION: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', AMOUNT: '10' },
+    ] as SheetRow[]);
+    expect(errors).toHaveLength(0);
+    expect(records[0].destination).toBe('GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2');
+    expect(records[0].amount).toBe('10');
+  });
+
+  it('accepts mixed-case headers (Destination, Amount)', () => {
+    const { records, errors } = parseRows([
+      { Destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', Amount: '25' },
+    ] as SheetRow[]);
+    expect(errors).toHaveLength(0);
+    expect(records[0].destination).toBe('GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2');
+    expect(records[0].amount).toBe('25');
+  });
+
+  it('accepts "amt" as an alias for amount', () => {
+    const { records } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amt: '30' },
+    ] as SheetRow[]);
+    expect(records[0].amount).toBe('30');
+  });
+
+  it('accepts "recipient" as an alias for destination', () => {
+    const { records } = parseRows([
+      { recipient: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '5' },
+    ] as SheetRow[]);
+    expect(records[0].destination).toBe('GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2');
+  });
+
+  it('accepts "currency" as an alias for asset', () => {
+    const { records } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '5', currency: 'EURC' },
+    ] as SheetRow[]);
+    expect(records[0].asset).toBe('EURC');
+  });
+
+  it('accepts "token" as an alias for asset', () => {
+    const { records } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '5', token: 'USDC' },
+    ] as SheetRow[]);
+    expect(records[0].asset).toBe('USDC');
+  });
+
+  it('accepts "reference" as an alias for memo', () => {
+    const { records } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '5', reference: 'REF-001' },
+    ] as SheetRow[]);
+    expect(records[0].memo).toBe('REF-001');
+  });
+
+  it('accepts "escrow duration" (with space) as an alias for escrow_duration', () => {
+    const { records } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '5', 'escrow duration': 7200 },
+    ] as SheetRow[]);
+    expect(records[0].escrow_duration).toBe(7200);
+  });
+
+  it('accepts "issuer" as an alias for asset_issuer', () => {
+    const { records } = parseRows([
+      {
+        destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2',
+        amount: '5',
+        issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+      },
+    ] as SheetRow[]);
+    expect(records[0].asset_issuer).toBe('GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN');
+  });
+
+  it('trims whitespace from header names before normalising', () => {
+    // Simulate a spreadsheet with accidentally padded column headers
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['  destination  ', '  amount  '],
+      ['GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', '15'],
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    const tmpFile = path.join(os.tmpdir(), `xlsx-trim-${Date.now()}.xlsx`);
+    XLSX.writeFile(wb, tmpFile);
+    try {
+      const { records, errors } = parseXLSX(tmpFile);
+      expect(errors).toHaveLength(0);
+      expect(records[0].destination).toBe('GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2');
+      expect(records[0].amount).toBe('15');
+    } finally {
+      fs.unlinkSync(tmpFile);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — required column validation
+// ---------------------------------------------------------------------------
+
+describe('parseXLSX — required column validation', () => {
+  it('throws when both destination and amount columns are absent', () => {
+    const ws = XLSX.utils.aoa_to_sheet([['note'], ['hello']]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    const tmpFile = path.join(os.tmpdir(), `xlsx-nocols-${Date.now()}.xlsx`);
+    XLSX.writeFile(wb, tmpFile);
+    try {
+      expect(() => parseXLSX(tmpFile)).toThrow(/missing required column/i);
+    } finally {
+      fs.unlinkSync(tmpFile);
+    }
+  });
+
+  it('throws when only the destination column is missing', () => {
+    const ws = XLSX.utils.aoa_to_sheet([['amount'], ['100']]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    const tmpFile = path.join(os.tmpdir(), `xlsx-nodest-${Date.now()}.xlsx`);
+    XLSX.writeFile(wb, tmpFile);
+    try {
+      expect(() => parseXLSX(tmpFile)).toThrow(/destination/i);
+    } finally {
+      fs.unlinkSync(tmpFile);
+    }
+  });
+
+  it('throws when only the amount column is missing', () => {
+    const ws = XLSX.utils.aoa_to_sheet([['destination'], ['GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2']]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    const tmpFile = path.join(os.tmpdir(), `xlsx-noamt-${Date.now()}.xlsx`);
+    XLSX.writeFile(wb, tmpFile);
+    try {
+      expect(() => parseXLSX(tmpFile)).toThrow(/amount/i);
+    } finally {
+      fs.unlinkSync(tmpFile);
+    }
+  });
+
+  it('error message includes the found headers', () => {
+    const ws = XLSX.utils.aoa_to_sheet([['note', 'ref'], ['x', 'y']]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    const tmpFile = path.join(os.tmpdir(), `xlsx-hdrs-${Date.now()}.xlsx`);
+    XLSX.writeFile(wb, tmpFile);
+    try {
+      expect(() => parseXLSX(tmpFile)).toThrow(/found headers/i);
+    } finally {
+      fs.unlinkSync(tmpFile);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — row-level validation
+// ---------------------------------------------------------------------------
+
+describe('parseXLSX — row-level validation', () => {
+  it('returns a row error when destination is empty', () => {
+    const { records, errors } = parseRows([
+      { destination: '', amount: '10' },
+    ]);
+    expect(records).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].row).toBe(2);
+    expect(errors[0].errors[0]).toMatch(/destination/i);
+  });
+
+  it('returns a row error when amount is empty', () => {
+    const { records, errors } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '' },
+    ]);
+    expect(records).toHaveLength(0);
+    expect(errors[0].row).toBe(2);
+    expect(errors[0].errors[0]).toMatch(/amount/i);
+  });
+
+  it('returns a row error when amount is not a number', () => {
+    const { errors } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: 'abc' },
+    ]);
+    expect(errors[0].errors[0]).toMatch(/not a valid number/i);
+  });
+
+  it('returns a row error when amount is zero', () => {
+    const { errors } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '0' },
+    ]);
+    expect(errors[0].errors[0]).toMatch(/greater than zero/i);
+  });
+
+  it('returns a row error when amount is negative', () => {
+    const { errors } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '-5' },
+    ]);
+    expect(errors[0].errors[0]).toMatch(/greater than zero/i);
+  });
+
+  it('returns a row error when escrow_duration is non-numeric', () => {
+    const { errors } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '10', escrow_duration: 'bad' },
+    ]);
+    expect(errors[0].errors[0]).toMatch(/escrow_duration/i);
+  });
+
+  it('returns a row error when escrow_duration is negative', () => {
+    const { errors } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '10', escrow_duration: -1 },
+    ]);
+    expect(errors[0].errors[0]).toMatch(/non-negative/i);
+  });
+
+  it('reports multiple errors per row when both required fields are invalid', () => {
+    const { errors } = parseRows([{ destination: '', amount: '0' }]);
+    expect(errors[0].errors.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('assigns correct 1-based row numbers (first data row = 2)', () => {
+    const { errors } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '10' }, // row 2 — valid
+      { destination: '', amount: '10' },  // row 3 — invalid
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '20' }, // row 4 — valid
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '-1' }, // row 5 — invalid
+    ]);
+    expect(errors).toHaveLength(2);
+    expect(errors[0].row).toBe(3);
+    expect(errors[1].row).toBe(5);
+  });
+
+  it('valid rows are returned even when some rows have errors', () => {
+    const { records, errors } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '10' },
+      { destination: '', amount: '10' },
+      { destination: 'GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGVA2XM9DWBF32LLVBF3', amount: '20' },
+    ]);
+    expect(records).toHaveLength(2);
+    expect(errors).toHaveLength(1);
+  });
+
+  it('accepts escrow_duration of 0 (disabled escrow)', () => {
+    const { records, errors } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '10', escrow_duration: 0 },
+    ]);
+    expect(errors).toHaveLength(0);
+    expect(records[0].escrow_duration).toBe(0);
+  });
+
+  it('rejects a fractional escrow_duration — must be a non-negative integer', () => {
+    const { errors } = parseRows([
+      { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '10', escrow_duration: 3600.9 },
+    ]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].errors[0]).toMatch(/non-negative integer/i);
   });
 });
 
@@ -163,27 +421,14 @@ describe('parseXLSX — default values for missing optional columns', () => {
 // ---------------------------------------------------------------------------
 
 describe('parseXLSX — edge cases', () => {
-  it('returns empty array for a sheet with no data rows', () => {
-    const records = parseRows([]);
+  it('returns empty records and errors for a sheet with no data rows', () => {
+    const { records, errors } = parseRows([]);
     expect(records).toHaveLength(0);
-  });
-
-  it('coerces numeric cell amount to string', () => {
-    const [record] = parseRows(NUMERIC_AMOUNT_ROW);
-    expect(record.amount).toBe('77');
-    expect(typeof record.amount).toBe('string');
-  });
-
-  it('treats non-numeric escrow_duration as 0', () => {
-    const [record] = parseRows(INVALID_ESCROW_ROW);
-    expect(record.escrow_duration).toBe(0);
+    expect(errors).toHaveLength(0);
   });
 
   it('uses only the first sheet when the workbook has multiple sheets', () => {
-    const tmpFile = path.join(
-      os.tmpdir(),
-      `xlsx-multi-${Date.now()}.xlsx`,
-    );
+    const tmpFile = path.join(os.tmpdir(), `xlsx-multi-${Date.now()}.xlsx`);
     const ws1 = XLSX.utils.json_to_sheet([
       { destination: 'GBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2', amount: '10' },
     ]);
@@ -196,7 +441,7 @@ describe('parseXLSX — edge cases', () => {
     XLSX.utils.book_append_sheet(wb, ws2, 'Other');
     XLSX.writeFile(wb, tmpFile);
     try {
-      const records = parseXLSX(tmpFile);
+      const { records } = parseXLSX(tmpFile);
       expect(records).toHaveLength(1);
       expect(records[0].amount).toBe('10');
     } finally {
@@ -204,8 +449,8 @@ describe('parseXLSX — edge cases', () => {
     }
   });
 
-  it('returns all required PaymentRecord keys on every record', () => {
-    const records = parseRows(FULL_ROWS);
+  it('returns all required PaymentRecord keys on every valid record', () => {
+    const { records } = parseRows(FULL_ROWS);
     for (const record of records) {
       expect(record).toHaveProperty('destination');
       expect(record).toHaveProperty('amount');
