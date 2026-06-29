@@ -64,31 +64,3 @@ export function isValidStellarContractAddress(address: string): boolean {
 export function isValidStellarAddress(address: string): boolean {
   return isValidStellarPublicKey(address) || isValidStellarContractAddress(address);
 }
-
-// ── react-hook-form compatible validator ──────────────────────────────────────
-
-/**
- * Signature for an address-validation callback compatible with
- * react-hook-form's `validate` option.
- *
- * - `true`   → address is valid
- * - `string` → address is invalid; the string is the error message to display
- * - `false`  → address is invalid; the caller should show a generic message
- */
-export type AddressValidator = (address: string) => boolean | string;
-
-/**
- * Default `AddressValidator` for payment forms.
- *
- * Accepts both G… (ed25519 public keys) and C… (Soroban contract addresses).
- * Returns `true` on success or a human-readable error string on failure.
- *
- * @example
- * // Pass directly to react-hook-form's validate option:
- * register('to', { validate: defaultStellarAddressValidator })
- */
-export const defaultStellarAddressValidator: AddressValidator = (address: string) => {
-  if (!address) return 'Address is required.';
-  if (isValidStellarAddress(address)) return true;
-  return 'Enter a valid Stellar address (G… or C…).';
-};

@@ -305,3 +305,138 @@ impl RateOracleContract {
         env.storage().persistent().set(&aggregated_key, &aggregated_rates);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use soroban_sdk::testutils::{Address as _, Ledger, LedgerInfo};
+    use soroban_sdk::{vec, IntoVal, Symbol};
+
+    fn setup_test() -> (Env, Address, RateOracleContractClient<'static>) {
+        let env = Env::default();
+        env.ledger().set(LedgerInfo {
+            timestamp: 12345,
+            protocol_version: 20,
+            sequence_number: 10,
+            network_id: Default::default(),
+            base_reserve: 10,
+            min_temp_entry_ttl: 1,
+            min_persistent_entry_ttl: 1,
+        });
+
+        let contract_id = env.register_contract(None, RateOracleContract);
+        let client = RateOracleContractClient::new(&env, &contract_id);
+        let admin = Address::random(&env);
+        client.set_admin(&admin);
+        (env, admin, client)
+    }
+
+    #[test]
+    fn test_submit_and_get_single_rate() {
+        let (env, admin, client) = setup_test();
+        let source_address = Address::random(&env);
+        let source_name = Symbol::new(&env, "SRC1");
+
+        client.add_rate_source(&admin, &source_name, &source_address, &100);
+
+        let from = Symbol::new(&env, "USD");
+        let to = Symbol::new(&env, "EUR");
+        let rate = 920000; // 0.92
+        let confidence = 90;
+
+        client.with_source_account(&source_address).submit_rate(
+            &source_address,
+            &from,
+            &to,
+            &rate,
+            &confidence,
+        );
+
+        let aggregated_rate = client.get_rate(&from, &to);
+
+        assert_eq!(aggregated_rate.rate, rate);
+        assert_eq!(aggregated_rate.sources_count, 1);
+        assert_eq!(aggregated_rate.last_updated, 12345);
+    }
+
+    #[test]
+    fn test_aggregation_with_confidence_weighting() {
+        let (env, admin, client) = setup_test();
+        let source1_addr = Address::random(&env);
+        let source2_addr = Address::random(&env);
+
+        client.add_rate_source(&admin, &Symbol::new(&env, "SRC1"), &source1_addr, &50);
+        client.add_rate_source(&admin, &Symbol::new(&env, "SRC2"), &source2_addr, &50);
+
+        let from = Symbol::new(&env, "USD");
+        let to = Symbol::new(&env, "MXN");
+
+        // Source 1 submits rate 18.0 with confidence 80
+        client.with_source_account(&source1_addr).submit_rate(
+            &source1_addr,
+            &from,
+            &to,
+            &18_000_000,
+            &80,
+        );
+
+        // Source 2 submits rate 20.0 with confidence 20
+        client.with_source_account(&source2_addr).submit_rate(
+            &source2_addr,
+            &from,
+            &to,
+            &20_000_000,
+            &20,
+        );
+
+        let aggregated_rate = client.get_rate(&from, &to);
+
+        // Expected rate = (18_000_000 * 80 + 20_000_000 * 20) / (80 + 20)
+        // = (1_440_000_000 + 400_000_000) / 100
+        // = 1_840_000_000 / 100 = 18_400_000
+        let expected_rate = 18_400_000;
+
+        assert_eq!(aggregated_rate.rate, expected_rate);
+        assert_eq!(aggregated_rate.sources_count, 2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Rate not found for this currency pair")]
+    fn test_get_rate_for_nonexistent_pair() {
+        let (env, _, client) = setup_test();
+        let from = Symbol::new(&env, "AAA");
+        let to = Symbol::new(&env, "BBB");
+        client.get_rate(&from, &to);
+    }
+
+    #[test]
+    #[should_panic(expected = "Rate source not authorized")]
+    fn test_submit_from_unauthorized_source() {
+        let (env, _, client) = setup_test();
+        let unauthorized_source = Address::random(&env);
+        client.with_source_account(&unauthorized_source).submit_rate(
+            &unauthorized_source,
+            &Symbol::new(&env, "USD"),
+            &Symbol::new(&env, "EUR"),
+            &920000,
+            &90,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Rate source is not active")]
+    fn test_submit_from_inactive_source() {
+        let (env, admin, client) = setup_test();
+        let source_addr = Address::random(&env);
+        client.add_rate_source(&admin, &Symbol::new(&env, "SRC1"), &source_addr, &100);
+        client.update_rate_source(&admin, &source_addr, &100, &false); // Deactivate
+
+        client.with_source_account(&source_addr).submit_rate(
+            &source_addr,
+            &Symbol::new(&env, "USD"),
+            &Symbol::new(&env, "EUR"),
+            &920000,
+            &90,
+        );
+    }
+}

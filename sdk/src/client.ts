@@ -27,6 +27,7 @@ import {
   ErrorInfo,
 } from './types';
 
+import { isValidStellarContractAddress } from './validation';
 export class StellarClient {
   private config: StellarConfig;
   private contracts: ContractAddresses;
@@ -36,6 +37,18 @@ export class StellarClient {
   constructor(config: StellarConfig, contracts: ContractAddresses) {
     this.config = config;
     this.contracts = contracts;
+
+    if (!contracts.escrow || !isValidStellarContractAddress(contracts.escrow)) {
+      throw new Error('Invalid or missing escrow contract address.');
+    }
+    if (!contracts.rateOracle || !isValidStellarContractAddress(contracts.rateOracle)) {
+      throw new Error('Invalid or missing rateOracle contract address.');
+    }
+    if (!contracts.compliance || !isValidStellarContractAddress(contracts.compliance)) {
+      throw new Error('Invalid or missing compliance contract address.');
+    }
+
+
     this.httpClient = axios.create({
       baseURL: config.horizonUrl,
       timeout: 30000,
