@@ -26,6 +26,8 @@ A comprehensive SDK for building cross-border payment applications on the Stella
 - [TypeScript SDK](#typescript-sdk)
 - [React Components](#react-components)
 - [Examples](#examples)
+- [CLI Tool](#-cli-tool-stellar-payout)
+- [Status Monitoring](#-status-monitoring)
 - [Configuration](#️-configuration)
 - [API Reference](#api-reference)
 - [Building](#building)
@@ -481,18 +483,121 @@ stellar-payout batch --input payments.csv --source-secret $SECRET_KEY \
   --network testnet
 ```
 
-#### `stellar-payout status` - Real-Time Monitoring
+#### `stellar-payout status` - Batch Status Monitoring
+
+Query the state of any batch and optionally stream live updates while it runs.
+
+**Options**
+
+| Flag | Env var | Default | Description |
+|---|---|---|---|
+| `-b, --batch-id <id>` | — | _(omit to list recent)_ | Batch ID to inspect. Omit to show the 10 most recent batches. |
+| `-f, --follow` | — | `false` | Stream live progress updates until the batch finishes (Ctrl+C to stop). Only active while the batch status is `running`. |
+| `--horizon-url <url>` | `HORIZON_URL` | `https://horizon-testnet.stellar.org` | Horizon endpoint used for Horizon transaction streaming when `--follow` is set. |
+| `--db-path <path>` | `DB_PATH` | `./stellar-payout.db` | Path to the SQLite database written by `stellar-payout batch`. Must point to the same file used during batch processing. |
+| `--verbose` | — | `false` | Print debug output including the Horizon stream endpoint. |
+
+**Usage examples**
 
 ```bash
-# Show recent batches
+# List the 10 most recent batches across all runs
 stellar-payout status
 
-# Monitor specific batch
-stellar-payout status --batch-id <batch_id>
+# Inspect a specific batch (snapshot, no streaming)
+stellar-payout status --batch-id batch_1735000000000_abc123
 
-# Stream real-time updates via Horizon
-stellar-payout status --batch-id <batch_id> --follow
+# Stream live progress while the batch is running (polls every 2 s,
+# also tails new Horizon transactions every 5 s)
+stellar-payout status --batch-id batch_1735000000000_abc123 --follow
+
+# Use a non-default database path (must match the path passed to batch)
+stellar-payout status --batch-id batch_1735000000000_abc123 \
+  --db-path /data/payroll.db
+
+# Point at mainnet Horizon when streaming a mainnet batch
+stellar-payout status --batch-id batch_1735000000000_abc123 --follow \
+  --horizon-url https://horizon.stellar.org \
+  --db-path ./mainnet-payout.db
+
+# Verbose mode — prints the Horizon stream URL and debug info
+stellar-payout status --batch-id batch_1735000000000_abc123 --follow --verbose
 ```
+
+**Output — batch summary table**
+
+When a batch ID is provided, the command prints a property/value table:
+
+```
+┌─────────────────┬────────────────────────────────────────────┐
+│ Property        │ Value                                      │
+├─────────────────┼────────────────────────────────────────────┤
+│ Batch ID        │ batch_1735000000000_abc123                  │
+│ Status          │ completed                                   │
+│ Network         │ testnet                                     │
+│ Source Account  │ GABC...XYZ                                  │
+│ Total Payments  │ 50                                          │
+│ Processed       │ 50                                          │
+│ Successful      │ 48                                          │
+│ Failed          │ 2                                           │
+│ Skipped         │ 0                                           │
+│ Started At      │ 2024-01-15T09:00:00.000Z                    │
+│ Completed At    │ 2024-01-15T09:04:37.000Z                    │
+│ Dry Run         │ No                                          │
+└─────────────────┴────────────────────────────────────────────┘
+```
+
+It then shows a per-status breakdown of payment entries, full details of any failed entries (up to 20), and a transaction-group table.
+
+**Output — recent batches list (no batch ID)**
+
+```
+┌──────────────────────────────┬───────────┬───────┬─────────┬────────┬─────────┬──────────────────────────┐
+│ Batch ID                     │ Status    │ Total │ Success │ Failed │ Network │ Started                  │
+├──────────────────────────────┼───────────┼───────┼─────────┼────────┼─────────┼──────────────────────────┤
+│ batch_1735000000000_abc123   │ completed │ 50    │ 48      │ 2      │ testnet │ 2024-01-15T09:00:00.000Z │
+│ batch_1734900000000_def456   │ failed    │ 10    │ 0       │ 10     │ testnet │ 2024-01-14T14:22:00.000Z │
+└──────────────────────────────┴───────────┴───────┴─────────┴────────┴─────────┴──────────────────────────┘
+```
+
+**Interpreting batch and entry statuses**
+
+*Batch statuses*
+
+| Status | Meaning |
+|---|---|
+| `created` | Batch initialised but not yet started. |
+| `running` | Actively submitting transactions. |
+| `paused` | Gracefully paused by SIGINT — safe to resume with `retry`. |
+| `completed` | All entries reached a terminal state (confirmed, failed, or skipped). |
+| `failed` | Batch encountered a fatal error and stopped. |
+| `cancelled` | Manually cancelled. |
+
+*Entry statuses*
+
+| Status | Meaning |
+|---|---|
+| `pending` | Not yet picked up for submission. |
+| `validating` | Destination account and trustline checks in progress. |
+| `submitted` | Transaction sent to Horizon, awaiting ledger confirmation. |
+| `confirmed` | Transaction included in a ledger — payment delivered. |
+| `failed` | Submission or confirmation failed. See the `Error` column for details. Use `stellar-payout retry` to resubmit. |
+| `retrying` | Queued for automatic retry with exponential backoff. |
+| `skipped` | Entry excluded (e.g. destination has no trustline and validation failed). |
+
+**`--follow` streaming behaviour**
+
+When `--follow` is passed and the batch status is `running`, the command:
+
+1. Polls the local SQLite database every **2 seconds** and prints a progress bar whenever the processed count changes.
+2. Simultaneously polls the Horizon `/accounts/{sourceAccount}/transactions` endpoint every **5 seconds**, printing each new transaction hash and its operation count as it lands on-chain.
+3. Exits automatically when the batch status transitions to `completed`, `failed`, or `cancelled`.
+4. Stops cleanly on **Ctrl+C** (SIGINT).
+
+If the batch is already in a terminal status when `--follow` is supplied, the snapshot is printed and the command exits immediately — no streaming occurs.
+
+> **Database path**: `--follow` reads from the same SQLite file the `batch` command writes to. If the batch is running on another machine or in a container, mount or copy the database file to a path accessible locally, then pass it via `--db-path`.
+
+> **Horizon URL**: The streaming poller uses the `--horizon-url` value (or `HORIZON_URL` env var). For mainnet batches, ensure this is set to `https://horizon.stellar.org` or your own Horizon instance, otherwise the transaction tail will be empty.
 
 #### `stellar-payout retry` - Retry Failed Transactions
 
@@ -602,6 +707,94 @@ The `retry` command re-submits every entry whose status is `failed`.
 For entries stuck in `submitted` (submitted to Horizon but not yet confirmed),
 re-running the batch command with the same `--db-path` will detect the incomplete
 groups via `getIncompleteGroups` and re-check Horizon for their status.
+
+## 📊 Status Monitoring
+
+The `stellar-payout status` command is your primary window into any batch — whether it finished hours ago or is actively running right now.
+
+### Listing recent batches
+
+Running `status` without a batch ID shows the 10 most recent batches:
+
+```bash
+stellar-payout status
+```
+
+This is the quickest way to find a batch ID if you did not capture it from the `batch` command's output.
+
+### Inspecting a specific batch
+
+```bash
+stellar-payout status --batch-id batch_1735000000000_abc123
+```
+
+Prints a full summary: overall counters, a per-status breakdown of payment entries, details for any failed entries, and the transaction-group table.
+
+### Streaming live progress with `--follow`
+
+```bash
+stellar-payout status --batch-id batch_1735000000000_abc123 --follow
+```
+
+Attaches to a running batch and streams two sources of updates simultaneously:
+
+- **Local DB poll** (every 2 s) — progress bar showing confirmed / failed / skipped counts.
+- **Horizon transaction tail** (every 5 s) — prints each new transaction hash and operation count as it lands on-chain.
+
+The command exits automatically when the batch completes. Press **Ctrl+C** to detach early without affecting the running batch.
+
+### Using a custom database path
+
+The `batch` command writes state to `./stellar-payout.db` by default. If you passed a custom `--db-path` when running the batch, pass the same path to `status`:
+
+```bash
+# Batch was started with a custom DB path
+stellar-payout batch --input payments.csv --source-secret $SECRET_KEY \
+  --db-path /data/payroll-2024-01.db
+
+# Query that same batch
+stellar-payout status --db-path /data/payroll-2024-01.db
+
+# Monitor a specific batch in that file
+stellar-payout status --batch-id batch_1735000000000_abc123 \
+  --db-path /data/payroll-2024-01.db --follow
+```
+
+### Pointing at the correct Horizon instance
+
+The `--follow` poller connects to Horizon to tail live transactions. Make sure the URL matches the network the batch was submitted to:
+
+```bash
+# Testnet (default)
+stellar-payout status --batch-id <id> --follow
+# equivalent to:
+stellar-payout status --batch-id <id> --follow \
+  --horizon-url https://horizon-testnet.stellar.org
+
+# Mainnet
+stellar-payout status --batch-id <id> --follow \
+  --horizon-url https://horizon.stellar.org
+
+# Self-hosted / custom Horizon
+stellar-payout status --batch-id <id> --follow \
+  --horizon-url https://horizon.my-org.internal
+```
+
+Set `HORIZON_URL` in your `.env` to avoid repeating the flag on every run.
+
+### Interpreting the results
+
+**Batch is `completed`** — all entries reached a terminal state. Check `Failed` count; if > 0, run `stellar-payout report` for a full audit trail and `stellar-payout retry` to resubmit failures.
+
+**Batch is `running`** — use `--follow` to watch it live or re-run `status` periodically.
+
+**Batch is `paused`** — stopped by Ctrl+C during a previous run. Use `stellar-payout retry` to resume failed entries, or re-run `stellar-payout batch` with `--db-path` pointing to the same file to resume pending ones.
+
+**Batch is `failed`** — a fatal error stopped the batch. Check the `Error` column in the failed entries table, fix the root cause, then retry with `stellar-payout retry`.
+
+**Entry is `submitted` but batch is `completed`** — the transaction was sent to Horizon but confirmation was not recorded (e.g. a crash between Horizon confirm and DB write). Re-running `stellar-payout batch` with the same `--db-path` will re-check these entries against Horizon.
+
+**Entry is `skipped`** — destination account did not exist on-chain or lacked the required trustline at validation time. Verify the destination address and asset issuer, then retry.
 
 ## ⚙️ Configuration
 
