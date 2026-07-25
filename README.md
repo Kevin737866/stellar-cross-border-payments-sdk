@@ -43,16 +43,21 @@ A comprehensive SDK for building cross-border payment applications on the Stella
 
 ```bash
 # Clone the repository
-git clone https://github.com/stellar-cross-border/stellar-cross-border-payments-sdk.git
+git clone https://github.com/Kevin737866/stellar-cross-border-payments-sdk.git
 cd stellar-cross-border-payments-sdk
 
-# Install dependencies
+# Install dependencies for all packages (uses npm workspaces)
 npm install
 
 # Install Rust dependencies
 cd src && cargo build
 cd ..
 ```
+
+> **💡 Monorepo Workspaces:** This repository uses [npm workspaces](https://docs.npmjs.com/cli/v10/using-npm/workspaces). Running `npm install` at the root installs dependencies for all packages (`cli/`, `sdk/`, `ui/`) simultaneously. You can also run commands scoped to a specific package:
+> - `npm run build -w sdk` — Build only the SDK
+> - `npm run dev -w ui` — Start the UI dev server
+> - `npm test --workspaces` — Test all packages
 
 ### Environment Setup
 
@@ -606,25 +611,23 @@ interface ComplianceCheckResult extends TransactionResult {
 
 ## 🧪 Testing
 
-### Run Contract Tests
+### All Tests (via Workspaces)
+
+```bash
+# Run tests for all packages
+npm test --workspaces --if-present
+
+# Or test specific packages
+npm run test:sdk        # SDK tests only
+npm run test -w cli     # CLI tests only
+npm run test -w ui      # UI tests only
+```
+
+### Contract Tests
 
 ```bash
 cd src
 cargo test
-```
-
-### Run SDK Tests
-
-```bash
-cd sdk
-npm test
-```
-
-### Run UI Tests
-
-```bash
-cd ui
-npm test
 ```
 
 ### Integration Tests
@@ -730,7 +733,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - **Documentation**: [https://docs.stellar-cross-border.com](https://docs.stellar-cross-border.com)
-- **Issues**: [GitHub Issues](https://github.com/stellar-cross-border/stellar-cross-border-payments-sdk/issues)
+- **Issues**: [GitHub Issues](https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues)
 - **Discord**: [Stellar Discord](https://discord.gg/stellar)
 - **Twitter**: [@StellarOrg](https://twitter.com/StellarOrg)
 

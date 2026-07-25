@@ -56,6 +56,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/kryputh/stellar-cross-border-payments-sdk.git"
-  }
+    "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues"
+  },
+  "homepage": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk#readme"
 }
