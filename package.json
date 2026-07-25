@@ -1,0 +1,44 @@
+{
+  "name": "stellar-cross-border-payments-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A comprehensive SDK for building cross-border payment applications on the Stellar network",
+  "workspaces": [
+    "cli",
+    "sdk",
+    "ui"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:sdk": "npm run build -w sdk",
+    "build:cli": "npm run build -w cli",
+    "build:ui": "npm run build -w ui",
+    "build:contracts": "cd src && cargo build --target wasm32-unknown-unknown --release",
+    "dev": "npm run dev --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "type-check": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:sdk": "npm run test -w sdk",
+    "test:contracts": "cd src && cargo test",
+    "clean": "npm run clean --workspaces --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\" 2>/dev/null || echo \"prettier not available globally\""
+  },
+  "keywords": [
+    "stellar",
+    "cross-border",
+    "payments",
+    "escrow",
+    "soroban",
+    "blockchain"
+  ],
+  "author": "Stellar Cross-Border Payments Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues"
+  },
+  "homepage": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk#readme"
+}
