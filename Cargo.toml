@@ -7,8 +7,8 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-soroban-sdk = { version = "22.0.11", features = ["testutils"] }
-soroban-token-sdk = "22.0.11"
+soroban-sdk = { version = "22.0.0", features = ["testutils"] }
+soroban-token-sdk = "22.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 url = "2.4"
