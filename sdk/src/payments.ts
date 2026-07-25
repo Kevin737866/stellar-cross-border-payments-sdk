@@ -276,6 +276,8 @@ export class StellarPayments {
       return { hash: '', success: false, error: message };
     }
   }
+
+  async refundEscrow(
     escrowId: string,
     signer: Keypair,
     options: PaymentOptions = {}

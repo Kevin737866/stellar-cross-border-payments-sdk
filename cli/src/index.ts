@@ -18,6 +18,11 @@ import { normalizeReportFormat } from './utils/report';
 
 dotenv.config();
 
+/** Helper to mirror Commander's envDefault but using process.env directly. */
+function envDefault(envKey: string, fallback: string): string {
+  return process.env[envKey] ?? fallback;
+}
+
 // Built-in fallbacks used when neither a CLI flag nor an environment variable is
 // provided. Kept here so every command shares the same defaults.
 const DEFAULT_HORIZON_URL = 'https://horizon-testnet.stellar.org';

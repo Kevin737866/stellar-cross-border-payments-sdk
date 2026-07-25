@@ -147,30 +147,30 @@ export interface SDKCallbacks {
 export class TransactionEventEmitter extends EventEmitter {
   // ── Typed overloads ───────────────────────────────────────────────────────
 
-  on<K extends keyof SDKEventMap>(event: K, listener: SDKEventMap[K]): this;
-  on(event: string, listener: (...args: unknown[]) => void): this;
-  on(event: string, listener: (...args: any[]) => void): this {
+  override on<K extends keyof SDKEventMap>(event: K, listener: SDKEventMap[K]): this;
+  override on(event: string, listener: (...args: unknown[]) => void): this;
+  override on(event: string, listener: (...args: any[]) => void): this {
     return super.on(event, listener);
   }
 
-  once<K extends keyof SDKEventMap>(event: K, listener: SDKEventMap[K]): this;
-  once(event: string, listener: (...args: unknown[]) => void): this;
-  once(event: string, listener: (...args: any[]) => void): this {
+  override once<K extends keyof SDKEventMap>(event: K, listener: SDKEventMap[K]): this;
+  override once(event: string, listener: (...args: unknown[]) => void): this;
+  override once(event: string, listener: (...args: any[]) => void): this {
     return super.once(event, listener);
   }
 
-  off<K extends keyof SDKEventMap>(event: K, listener: SDKEventMap[K]): this;
-  off(event: string, listener: (...args: unknown[]) => void): this;
-  off(event: string, listener: (...args: any[]) => void): this {
+  override off<K extends keyof SDKEventMap>(event: K, listener: SDKEventMap[K]): this;
+  override off(event: string, listener: (...args: unknown[]) => void): this;
+  override off(event: string, listener: (...args: any[]) => void): this {
     return super.off(event, listener);
   }
 
-  emit<K extends keyof SDKEventMap>(
+  override emit<K extends keyof SDKEventMap>(
     event: K,
     payload: Parameters<SDKEventMap[K]>[0]
   ): boolean;
-  emit(event: string, ...args: unknown[]): boolean;
-  emit(event: string, ...args: any[]): boolean {
+  override emit(event: string, ...args: unknown[]): boolean;
+  override emit(event: string, ...args: any[]): boolean {
     return super.emit(event, ...args);
   }
 

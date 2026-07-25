@@ -9,9 +9,9 @@ export function parseInputFile(filePath: string, format: InputFormat): PaymentRe
     case InputFormat.CSV:
       return parseCSV(filePath);
     case InputFormat.JSON:
-      return parseJSON(filePath);
+      return parseJSON(filePath).records;
     case InputFormat.XLSX:
-      return parseXLSX(filePath);
+      return parseXLSX(filePath).records;
     case InputFormat.MT103:
       return parseMT103(filePath);
     default:

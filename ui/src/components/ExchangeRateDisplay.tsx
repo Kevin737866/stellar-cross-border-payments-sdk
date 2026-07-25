@@ -438,7 +438,7 @@ export const ExchangeRateDisplay: React.FC<ExchangeRateDisplayProps> = ({
         <div className="mt-6 pt-6 border-t">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Rate Sources</h3>
           <div className="space-y-2">
-            {rateData.sources.map((source, index) => (
+            {rateData.sources.map((source: ExchangeRateResult['sources'][number], index: number) => (
               <div
                 key={index}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"

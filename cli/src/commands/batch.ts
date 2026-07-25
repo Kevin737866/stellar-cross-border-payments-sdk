@@ -1,4 +1,4 @@
-import { logger } from '../utils/logger';
+import * as logger from '../utils/logger';
 
 interface BatchRecord {
   destination: string;
@@ -83,7 +83,6 @@ import {
 import { parseInputFile, detectFormat } from '../parsers';
 import { BatchDatabase } from '../utils/database';
 import { validateBatch, checkFeeSurge } from '../utils/validation';
-import * as logger from '../utils/logger';
 
 let emergencyStop = false;
 let currentDb: BatchDatabase | null = null;
