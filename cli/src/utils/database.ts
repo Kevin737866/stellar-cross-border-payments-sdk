@@ -290,7 +290,7 @@ export class BatchDatabase {
                skipped_payments = ?
            WHERE batch_id = ?`,
         )
-        .run(stats.processed, stats.successful, stats.failed, stats.skipped, batchId);
+        .run(stats.processed ?? 0, stats.successful ?? 0, stats.failed ?? 0, stats.skipped ?? 0, batchId);
     });
 
     pauseAndCount();

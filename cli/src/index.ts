@@ -15,6 +15,7 @@ import {
 import { setLogLevel, LogLevel } from './utils/logger';
 import { validateRequiredOptions } from './utils/validation';
 import { normalizeReportFormat } from './utils/report';
+import { envDefault } from './utils/env';
 
 dotenv.config();
 
