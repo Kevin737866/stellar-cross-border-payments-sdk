@@ -1,64 +1,3 @@
-import { logger } from '../utils/logger';
-
-interface BatchRecord {
-  destination: string;
-  amount: string;
-  asset?: string;
-  [key: string]: unknown;
-}
-
-interface DryRunSummary {
-  totalRows:     number;
-  validRows:     number;
-  invalidRows:   number;
-  invalidDetails: { row: number; reason: string }[];
-  estimatedCost: string;
-}
-
-function validateRecord(record: BatchRecord, index: number) {
-  const errors: string[] = [];
-  if (!record.destination) errors.push('missing destination');
-  if (!record.amount || isNaN(Number(record.amount))) errors.push('invalid amount');
-  return errors.length
-    ? { row: index + 1, reason: errors.join(', ') }
-    : null;
-}
-
-export function dryRunSummary(records: BatchRecord[]): DryRunSummary {
-  const invalidDetails: { row: number; reason: string }[] = [];
-
-  records.forEach((r, i) => {
-    const err = validateRecord(r, i);
-    if (err) invalidDetails.push(err);
-  });
-
-  const validRows = records.length - invalidDetails.length;
-
-  return {
-    totalRows:     records.length,
-    validRows,
-    invalidRows:   invalidDetails.length,
-    invalidDetails,
-    estimatedCost: `~${(validRows * 0.00001).toFixed(5)} XLM base fee`,
-  };
-}
-
-export function printDryRunReport(summary: DryRunSummary) {
-  logger.info('====== DRY-RUN SUMMARY ======');
-  logger.info(`Total rows:      ${summary.totalRows}`);
-  logger.info(`Valid rows:      ${summary.validRows}`);
-  logger.warn(`Invalid rows:    ${summary.invalidRows}`);
-  logger.info(`Estimated cost:  ${summary.estimatedCost}`);
-
-  if (summary.invalidDetails.length > 0) {
-    logger.warn('Invalid row details:');
-    summary.invalidDetails.forEach(d =>
-      logger.warn(`  Row ${d.row}: ${d.reason}`)
-    );
-  }
-  logger.info('=============================');
-}
-
 import {
   Keypair,
   Account,
@@ -153,12 +92,156 @@ function getNetworkPassphrase(network: NetworkType): string {
 export async function executeBatch(config: BatchConfig): Promise<void> {
   setupSignalHandlers();
 
-  const batchId = crypto.randomBytes(8).toString('hex');
   const db = new BatchDatabase(config.dbPath);
   currentDb = db;
-  currentBatchId = batchId;
 
   logger.banner('Stellar Payout - Batch Processor');
+
+  // ── Stale batch recovery ────────────────────────────────────────────────
+  // Detect any batches that are still marked 'paused' or 'running' in the
+  // database.  A 'paused' batch was stopped gracefully by SIGINT/SIGTERM; a
+  // 'running' batch whose process is no longer alive crashed without cleanup.
+  // Both cases are safe to resume: we restore their state to 'running',
+  // refresh counters, and reprocess only the incomplete transaction groups.
+  const staleBatches = db.getBatchesNeedingResume();
+  if (staleBatches.length > 0) {
+    logger.warn(
+      `Found ${staleBatches.length} incomplete batch(es) in the database. Resuming...`
+    );
+
+    const sourceKeypair = Keypair.fromSecret(config.sourceSecret);
+    const networkPassphrase = config.networkPassphrase || getNetworkPassphrase(config.network);
+
+    for (const staleBatch of staleBatches) {
+      logger.info(`Resuming batch ${staleBatch.batchId} (status: ${staleBatch.status})`);
+
+      // Transition status: paused/running → running, refresh counters.
+      db.resumeBatch(staleBatch.batchId);
+      currentBatchId = staleBatch.batchId;
+
+      const incompleteGroups = db.getIncompleteGroups(staleBatch.batchId);
+      if (incompleteGroups.length === 0) {
+        logger.success(`Batch ${staleBatch.batchId} has no incomplete groups — marking completed.`);
+        db.updateBatchCounters(staleBatch.batchId);
+        db.updateBatchStatus(staleBatch.batchId, BatchStatus.Completed);
+        continue;
+      }
+
+      logger.info(`Re-processing ${incompleteGroups.length} incomplete group(s)...`);
+
+      // Re-fetch a fresh sequence number before resuming group submission.
+      let resumeAllocator: SequenceAllocator;
+      try {
+        const accountResponse = await axios.get(
+          `${config.horizonUrl}/accounts/${sourceKeypair.publicKey()}`,
+          { timeout: 15000 }
+        );
+        resumeAllocator = new SequenceAllocator(accountResponse.data.sequence);
+      } catch (err) {
+        logger.error(
+          `Failed to fetch source account for resume: ${err instanceof Error ? err.message : String(err)}`
+        );
+        db.updateBatchStatus(staleBatch.batchId, BatchStatus.Failed);
+        continue;
+      }
+
+      const semaphore = new Semaphore(config.concurrency);
+      let resumedGroups = 0;
+
+      const resumePromises = incompleteGroups.map(async (group) => {
+        if (emergencyStop) return;
+        await semaphore.acquire();
+        try {
+          if (emergencyStop) return;
+
+          // Only re-submit entries that are pending/submitted; skip confirmed ones.
+          const pendingEntries = db.getPendingEntriesByGroup(
+            staleBatch.batchId,
+            group.groupIndex
+          );
+          if (pendingEntries.length === 0) {
+            logger.debug(`Group ${group.groupIndex}: all entries already confirmed, skipping.`);
+            return;
+          }
+
+          // Re-check for fee surge before re-submitting.
+          const feeCheck = await checkFeeSurge(config.horizonUrl, config.feeSurgeThreshold);
+          if (feeCheck.surging) {
+            logger.warn(`Fee surge detected (${feeCheck.currentFee} stroops). Pausing group ${group.groupIndex}...`);
+            await waitForFeeDrop(config.horizonUrl, config.feeSurgeThreshold);
+          }
+
+          // Convert pending entries back to PaymentRecord shape for processGroup.
+          const recordsToRetry: PaymentRecord[] = pendingEntries.map((e) => ({
+            destination: e.destination,
+            amount: e.amount,
+            asset: e.asset,
+            asset_issuer: e.asset_issuer,
+            memo: e.memo,
+            escrow_duration: e.escrow_duration,
+          }));
+
+          await processGroup(
+            recordsToRetry,
+            group.groupIndex,
+            staleBatch.batchId,
+            sourceKeypair,
+            config,
+            networkPassphrase,
+            db,
+            resumeAllocator
+          );
+
+          resumedGroups++;
+          logger.progress(resumedGroups, incompleteGroups.length, 'groups resumed');
+        } finally {
+          semaphore.release();
+        }
+      });
+
+      await Promise.all(resumePromises);
+
+      db.updateBatchCounters(staleBatch.batchId);
+      const resumedState = db.getBatch(staleBatch.batchId);
+
+      if (emergencyStop) {
+        db.updateBatchStatus(staleBatch.batchId, BatchStatus.Paused);
+        logger.warn(`Batch ${staleBatch.batchId} paused during resume.`);
+      } else {
+        db.updateBatchStatus(staleBatch.batchId, BatchStatus.Completed);
+        logger.success(`Batch ${staleBatch.batchId} resume complete.`);
+      }
+
+      if (resumedState) {
+        logger.table(
+          ['Metric', 'Value'],
+          [
+            ['Batch ID', staleBatch.batchId],
+            ['Successful', String(resumedState.successfulPayments)],
+            ['Failed', String(resumedState.failedPayments)],
+            ['Skipped', String(resumedState.skippedPayments)],
+          ]
+        );
+        if (resumedState.failedPayments > 0) {
+          logger.info(
+            `Retry remaining failures with: stellar-payout retry --batch-id=${staleBatch.batchId}`
+          );
+        }
+      }
+    }
+
+    if (emergencyStop) {
+      db.close();
+      currentDb = null;
+      currentBatchId = null;
+      return;
+    }
+  }
+
+  // ── New batch ────────────────────────────────────────────────────────────
+  const batchId = crypto.randomBytes(8).toString('hex');
+  currentBatchId = batchId;
+
   logger.info(`Batch ID: ${batchId}`);
   logger.info(`Input file: ${config.inputFile}`);
   logger.info(`Format: ${config.format}`);

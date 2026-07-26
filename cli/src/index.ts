@@ -26,6 +26,16 @@ const DEFAULT_NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 const DEFAULT_MAX_FEE = '10000';
 const DEFAULT_DB_PATH = './stellar-payout.db';
 
+/**
+ * Return the value of an environment variable, falling back to a built-in
+ * default when the variable is unset or empty.  Used to wire Commander option
+ * defaults so that explicit CLI flags always take precedence, then env vars,
+ * then hard-coded fallbacks.
+ */
+function envDefault(envKey: string, fallback: string): string {
+  return process.env[envKey] || fallback;
+}
+
 const program = new Command();
 
 program
@@ -145,6 +155,11 @@ program
   .option('--max-retries <number>', 'Maximum retry attempts per entry', '3')
   .option('--backoff-base <ms>', 'Base backoff delay in milliseconds', '1000')
   .option('--backoff-max <ms>', 'Maximum backoff delay in milliseconds', '30000')
+  .option(
+    '--max-total-retry-time <ms>',
+    'Total retry time budget in milliseconds — retrying stops once this wall-clock duration is exceeded, even if per-entry attempts remain. Set to 0 for no time limit.',
+    '0',
+  )
   .option('--horizon-url <url>', 'Horizon URL (or HORIZON_URL)', envDefault('HORIZON_URL', DEFAULT_HORIZON_URL))
   .option('--network-passphrase <passphrase>', 'Network passphrase (or NETWORK_PASSPHRASE)', envDefault('NETWORK_PASSPHRASE', DEFAULT_NETWORK_PASSPHRASE))
   .option('--db-path <path>', 'SQLite database path (or DB_PATH)', envDefault('DB_PATH', DEFAULT_DB_PATH))
