@@ -172,6 +172,49 @@ export class StellarClient {
     }
   }
 
+  async prepareSorobanTransaction(
+    transaction: TransactionBuilder,
+    signer: Keypair
+  ): Promise<TransactionBuilder> {
+    const tx = transaction.build();
+    const prepared = await this.sorobanRpc.prepareTransaction(tx);
+
+    if (!prepared) {
+      throw new Error('Soroban prepare transaction returned no result');
+    }
+
+    const signedTx = prepared.transaction as unknown as TransactionBuilder;
+    signedTx.sign(signer);
+    return signedTx;
+  }
+
+  async sendSorobanTransaction(transaction: any): Promise<TransactionResult> {
+    try {
+      const tx = transaction.transaction || (typeof transaction.build === 'function' ? transaction.build() : transaction);
+      const response = await this.sorobanRpc.sendTransaction(tx);
+      return {
+        hash: response.hash,
+        success: response.status === 'PENDING' || response.status === 'SUCCESS',
+        result: response,
+      };
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getSorobanTransactionStatus(hash: string): Promise<TransactionResult> {
+    try {
+      const response = await this.sorobanRpc.getTransaction(hash);
+      return {
+        hash,
+        success: response.status === 'SUCCESS',
+        result: response,
+      };
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async getContractData(
     contractId: string,
     key: xdr.ScVal,
