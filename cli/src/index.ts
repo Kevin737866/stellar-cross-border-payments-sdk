@@ -143,6 +143,7 @@ program
       follow: opts.follow,
       dbPath: opts.dbPath,
       horizonUrl: opts.horizonUrl,
+      verbose: opts.verbose,
     });
   });
 

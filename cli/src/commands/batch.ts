@@ -291,9 +291,7 @@ export async function executeBatch(config: BatchConfig): Promise<void> {
 
   logger.success(`${valid.length} valid payments ready for processing`);
 
-  // Load source keypair
-  const sourceKeypair = Keypair.fromSecret(config.sourceSecret);
-  const sourcePublicKey = sourceKeypair.publicKey();
+  // sourceKeypair and sourcePublicKey are already validated at the top of executeBatch
   logger.info(`Source account: ${sourcePublicKey}`);
 
   // Create batch in database — atomically creates the row and sets status to
