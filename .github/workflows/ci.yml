@@ -79,6 +79,10 @@ jobs:
         working-directory: ./ui
         run: npm run lint
 
+      - name: Type-check (SDK)
+        working-directory: ./sdk
+        run: npm run typecheck
+
       - name: Test (SDK)
         working-directory: ./sdk
         run: npm test
@@ -98,6 +102,10 @@ jobs:
       - name: Build (SDK)
         working-directory: ./sdk
         run: npm run build
+
+      - name: Type-check (CLI)
+        working-directory: ./cli
+        run: npm run typecheck
 
       - name: Build (CLI)
         working-directory: ./cli

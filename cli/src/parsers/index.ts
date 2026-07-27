@@ -8,25 +8,10 @@ export function parseInputFile(filePath: string, format: InputFormat): PaymentRe
   switch (format) {
     case InputFormat.CSV:
       return parseCSV(filePath);
-    case InputFormat.JSON: {
-      const result = parseJSON(filePath);
-      if (result.errors.length > 0) {
-        // Surface validation errors as warnings via stderr; only valid records proceed.
-        result.errors.forEach(e =>
-          process.stderr.write(`JSON parse warning: entry ${e.index}: ${e.errors.join(', ')}\n`)
-        );
-      }
-      return result.records;
-    }
-    case InputFormat.XLSX: {
-      const result = parseXLSX(filePath);
-      if (result.errors.length > 0) {
-        result.errors.forEach(e =>
-          process.stderr.write(`XLSX parse warning: row ${e.row}: ${e.errors.join(', ')}\n`)
-        );
-      }
-      return result.records;
-    }
+    case InputFormat.JSON:
+      return parseJSON(filePath).records;
+    case InputFormat.XLSX:
+      return parseXLSX(filePath).records;
     case InputFormat.MT103:
       return parseMT103(filePath);
     default:
