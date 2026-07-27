@@ -5,6 +5,7 @@ import PDFDocument from 'pdfkit';
 import { ReportOptions, ReportFormat, BatchEntryStatus } from '../types';
 import { BatchDatabase } from '../utils/database';
 import * as logger from '../utils/logger';
+import { defaultReportOutputPath, SUPPORTED_REPORT_FORMATS } from '../utils/report';
 
 export async function executeReport(options: ReportOptions): Promise<void> {
   const db = new BatchDatabase(options.dbPath);
@@ -24,7 +25,11 @@ export async function executeReport(options: ReportOptions): Promise<void> {
   logger.info(`Generating ${options.format.toUpperCase()} report for batch ${options.batchId}`);
   logger.info(`Total entries: ${entries.length}`);
 
-  const outputPath = options.outputPath || `stellar-payout-report-${options.batchId}.${options.format}`;
+  const outputPath =
+    options.outputPath || defaultReportOutputPath(options.batchId, options.format);
+
+  // Validate output path before generating report
+  validateReportOutputPath(outputPath, options.format);
 
   switch (options.format) {
     case ReportFormat.CSV:
@@ -41,6 +46,46 @@ export async function executeReport(options: ReportOptions): Promise<void> {
 
   logger.success(`Report generated: ${path.resolve(outputPath)}`);
   db.close();
+}
+
+/**
+ * Validate the output path before generating a report.
+ *
+ * Checks:
+ * - File extension matches the requested format (CSV/PDF)
+ * - Parent directory exists and is writable (unless it's the current directory)
+ */
+function validateReportOutputPath(outputPath: string, format: ReportFormat): void {
+  // Validate file extension matches the requested format
+  const ext = path.extname(outputPath).toLowerCase().replace('.', '');
+  if (ext !== format) {
+    const expectedExts = SUPPORTED_REPORT_FORMATS.join(', ');
+    throw new Error(
+      `Output file extension ".${ext}" does not match the requested format "${format}". ` +
+      `Expected one of: ${expectedExts}.`
+    );
+  }
+
+  // Validate parent directory exists and is writable
+  const dir = path.dirname(outputPath);
+  if (dir === '.' || dir === '') {
+    // Current working directory — assume writable
+    return;
+  }
+
+  if (!fs.existsSync(dir)) {
+    throw new Error(
+      `Output directory "${dir}" does not exist. Please create it first or specify a valid output path.`
+    );
+  }
+
+  try {
+    fs.accessSync(dir, fs.constants.W_OK);
+  } catch {
+    throw new Error(
+      `Output directory "${dir}" is not writable. Please check permissions or specify a different output path.`
+    );
+  }
 }
 
 function generateCSVReport(
