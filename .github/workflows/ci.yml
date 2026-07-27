@@ -28,6 +28,12 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy lint
+        run: cargo clippy -- -D warnings
+
       - name: Build contracts
         run: npm run build:contracts
 
@@ -67,6 +73,10 @@ jobs:
         working-directory: ./ui
         run: npm ci
 
+      - name: Build (SDK) — required for CLI/UI type-check
+        working-directory: ./sdk
+        run: npm run build
+
       - name: Lint (SDK)
         working-directory: ./sdk
         run: npm run lint
@@ -81,7 +91,15 @@ jobs:
 
       - name: Type-check (SDK)
         working-directory: ./sdk
-        run: npm run typecheck
+        run: npx tsc --noEmit
+
+      - name: Type-check (CLI)
+        working-directory: ./cli
+        run: npx tsc --noEmit
+
+      - name: Type-check (UI)
+        working-directory: ./ui
+        run: npx tsc --noEmit
 
       - name: Test (SDK)
         working-directory: ./sdk
@@ -98,14 +116,6 @@ jobs:
       - name: Test (UI)
         working-directory: ./ui
         run: npm test -- --passWithNoTests --forceExit
-
-      - name: Build (SDK)
-        working-directory: ./sdk
-        run: npm run build
-
-      - name: Type-check (CLI)
-        working-directory: ./cli
-        run: npm run typecheck
 
       - name: Build (CLI)
         working-directory: ./cli

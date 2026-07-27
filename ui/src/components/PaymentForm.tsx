@@ -26,6 +26,9 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
+/** Sentinel value for the custom-asset option in the token dropdown. */
+const CUSTOM_ASSET_VALUE = '__custom_asset__';
+
 // ── Whitelisted tokens shown in the dropdown ────────────────────────────────
 const COMMON_TOKENS = [
   { symbol: 'XLM',  name: 'Stellar Lumens', contract: 'native' },
