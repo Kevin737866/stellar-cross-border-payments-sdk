@@ -46,10 +46,10 @@ A comprehensive SDK for building cross-border payment applications on the Stella
 
 ```bash
 # Clone the repository
-git clone https://github.com/stellar-cross-border/stellar-cross-border-payments-sdk.git
+git clone https://github.com/Kevin737866/stellar-cross-border-payments-sdk.git
 cd stellar-cross-border-payments-sdk
 
-# Install all workspace dependencies (sdk + cli + ui) in one step
+# Install dependencies for all packages (uses npm workspaces)
 npm install
 
 # Install Rust wasm target
@@ -1131,7 +1131,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - **Documentation**: [https://docs.stellar-cross-border.com](https://docs.stellar-cross-border.com)
-- **Issues**: [GitHub Issues](https://github.com/stellar-cross-border/stellar-cross-border-payments-sdk/issues)
+- **Issues**: [GitHub Issues](https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues)
 - **Discord**: [Stellar Discord](https://discord.gg/stellar)
 - **Twitter**: [@StellarOrg](https://twitter.com/StellarOrg)
 
