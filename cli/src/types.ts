@@ -103,6 +103,7 @@ export interface StatusStreamOptions {
   follow: boolean;
   dbPath: string;
   horizonUrl: string;
+  verbose?: boolean;
 }
 
 export interface RetryOptions {

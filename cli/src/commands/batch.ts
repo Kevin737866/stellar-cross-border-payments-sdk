@@ -153,6 +153,43 @@ function getNetworkPassphrase(network: NetworkType): string {
 export async function executeBatch(config: BatchConfig): Promise<void> {
   setupSignalHandlers();
 
+  // --- #94: Validate source secret and account existence before doing anything ---
+  // Fail fast here so the operator sees a clear error before any DB state is
+  // written or any payment records are parsed.
+  let sourceKeypair: Keypair;
+  try {
+    sourceKeypair = Keypair.fromSecret(config.sourceSecret);
+  } catch {
+    logger.error(
+      'Invalid source secret key. Ensure --source-secret (or ADMIN_SECRET_KEY) is a valid Stellar secret key (starts with "S").'
+    );
+    return;
+  }
+
+  const sourcePublicKey = sourceKeypair.publicKey();
+
+  if (!config.dryRun) {
+    logger.info(`Validating source account ${sourcePublicKey} on ${config.network}...`);
+    try {
+      await axios.get(`${config.horizonUrl}/accounts/${sourcePublicKey}`, { timeout: 15000 });
+      logger.success('Source account validated.');
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        logger.error(
+          `Source account ${sourcePublicKey} does not exist on ${config.network}. ` +
+          'Fund the account before running a batch.'
+        );
+      } else {
+        logger.error(
+          `Could not reach Horizon at ${config.horizonUrl} to validate source account: ` +
+          (err.message ?? String(err))
+        );
+      }
+      return;
+    }
+  }
+  // --- end #94 ---
+
   const batchId = crypto.randomBytes(8).toString('hex');
   const db = new BatchDatabase(config.dbPath);
   currentDb = db;
@@ -208,9 +245,7 @@ export async function executeBatch(config: BatchConfig): Promise<void> {
 
   logger.success(`${valid.length} valid payments ready for processing`);
 
-  // Load source keypair
-  const sourceKeypair = Keypair.fromSecret(config.sourceSecret);
-  const sourcePublicKey = sourceKeypair.publicKey();
+  // sourceKeypair and sourcePublicKey are already validated at the top of executeBatch
   logger.info(`Source account: ${sourcePublicKey}`);
 
   // Create batch in database — atomically creates the row and sets status to
