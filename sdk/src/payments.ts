@@ -247,14 +247,14 @@ export class StellarPayments {
         options
       );
 
-      const transaction = builder.build();
-      transaction.sign(signer);
+      const preparedTx = await this.client.prepareSorobanTransaction(builder, signer);
 
       if (options.submit !== false) {
-        const txHash = transaction.hash().toString('hex');
+        const tx = preparedTx.build();
+        const txHash = tx.hash().toString('hex');
         this.emitter?.emitSubmitted({ hash: txHash, timestamp: Date.now() });
 
-        const result = await this.client.submitTransaction(transaction.toXDR());
+        const result = await this.client.sendSorobanTransaction(preparedTx);
 
         if (result.success) {
           this.emitter?.emitConfirmed({ hash: result.hash, result: result.result });
@@ -269,13 +269,15 @@ export class StellarPayments {
         return result;
       }
 
-      return { hash: transaction.hash().toString('hex'), success: true };
+      return { hash: preparedTx.transaction?.hash()?.toString('hex') || '', success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.emitter?.emitFailed({ hash: '', error: message });
       return { hash: '', success: false, error: message };
     }
   }
+
+  async refundEscrow(
     escrowId: string,
     signer: Keypair,
     options: PaymentOptions = {}
@@ -295,14 +297,13 @@ export class StellarPayments {
         options
       );
 
-      const transaction = builder.build();
-      transaction.sign(signer);
+      const preparedTx = await this.client.prepareSorobanTransaction(builder, signer);
 
       if (options.submit !== false) {
-        const txHash = transaction.hash().toString('hex');
+        const txHash = preparedTx.transaction?.hash()?.toString('hex') || '';
         this.emitter?.emitSubmitted({ hash: txHash, timestamp: Date.now() });
 
-        const result = await this.client.submitTransaction(transaction.toXDR());
+        const result = await this.client.sendSorobanTransaction(preparedTx);
 
         if (result.success) {
           this.emitter?.emitConfirmed({ hash: result.hash, result: result.result });
@@ -317,7 +318,7 @@ export class StellarPayments {
         return result;
       }
 
-      return { hash: transaction.hash().toString('hex'), success: true };
+      return { hash: preparedTx.transaction?.hash()?.toString('hex') || '', success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.emitter?.emitFailed({ hash: '', error: message });
