@@ -482,6 +482,517 @@ impl ComplianceTrait for ComplianceContract {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use soroban_sdk::testutils::Address as _;
+
+    fn setup_env() -> (Env, Address) {
+        let env = Env::default();
+        let admin = Address::generate(&env);
+        ComplianceTrait::set_admin(env.clone(), admin.clone());
+        (env, admin)
+    }
+
+    fn register_test_user(
+        env: &Env,
+        admin: &Address,
+        user: &Address,
+        jurisdiction: &str,
+        risk: RiskLevel,
+        kyc: ComplianceLevel,
+    ) {
+        let mut limits: Map<Symbol, i128> = Map::new(env);
+        limits.set(Symbol::new(env, "USD"), 100_000_000);
+        limits.set(Symbol::new(env, "EUR"), 80_000_000);
+
+        ComplianceTrait::register_user(
+            env.clone(),
+            user.clone(),
+            kyc,
+            risk,
+            Symbol::new(env, jurisdiction),
+            Vec::new(env),
+            limits,
+        );
+    }
+
+    // ─── Registration tests ──────────────────────────────────────────────
+
+    #[test]
+    fn test_register_user() {
+        let (env, admin) = setup_env();
+        let user = Address::generate(&env);
+        register_test_user(&env, &admin, &user, "US", RiskLevel::Low, ComplianceLevel::Full);
+
+        let record = ComplianceTrait::get_user_compliance(env.clone(), user.clone());
+        assert_eq!(record.kyc_level, ComplianceLevel::Full);
+        assert_eq!(record.risk_level, RiskLevel::Low);
+        assert_eq!(record.jurisdiction, Symbol::new(&env, "US"));
+    }
+
+    #[test]
+    fn test_register_user_with_aml_flags() {
+        let (env, admin) = setup_env();
+        let user = Address::generate(&env);
+        let mut flags: Vec<Symbol> = Vec::new(&env);
+        flags.push_back(Symbol::new(&env, "PEP"));
+        flags.push_back(Symbol::new(&env, "SANCTIONS_MATCH"));
+
+        let mut limits: Map<Symbol, i128> = Map::new(&env);
+        limits.set(Symbol::new(&env, "USD"), 10_000_000);
+
+        ComplianceTrait::register_user(
+            env.clone(),
+            user.clone(),
+            ComplianceLevel::Basic,
+            RiskLevel::High,
+            Symbol::new(&env, "NG"),
+            flags.clone(),
+            limits,
+        );
+
+        let record = ComplianceTrait::get_user_compliance(env.clone(), user.clone());
+        assert_eq!(record.risk_level, RiskLevel::High);
+        assert_eq!(record.aml_flags.len(), 2);
+        assert_eq!(record.aml_flags.get(0), Symbol::new(&env, "PEP"));
+    }
+
+    #[test]
+    fn test_register_without_admin_fails() {
+        let env = Env::default();
+        let user = Address::generate(&env);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            ComplianceTrait::register_user(
+                env.clone(),
+                user.clone(),
+                ComplianceLevel::Basic,
+                RiskLevel::Low,
+                Symbol::new(&env, "US"),
+                Vec::new(&env),
+                Map::new(&env),
+            );
+        }));
+        assert!(result.is_err());
+    }
+
+    // ─── Compliance update tests ─────────────────────────────────────────
+
+    #[test]
+    fn test_update_user_compliance() {
+        let (env, admin) = setup_env();
+        let user = Address::generate(&env);
+        register_test_user(&env, &admin, &user, "US", RiskLevel::Low, ComplianceLevel::Basic);
+
+        let mut new_limits: Map<Symbol, i128> = Map::new(&env);
+        new_limits.set(Symbol::new(&env, "USD"), 200_000_000);
+
+        ComplianceTrait::update_user_compliance(
+            env.clone(),
+            user.clone(),
+            ComplianceLevel::Full,
+            RiskLevel::Medium,
+            Vec::new(&env),
+            new_limits.clone(),
+        );
+
+        let record = ComplianceTrait::get_user_compliance(env.clone(), user.clone());
+        assert_eq!(record.kyc_level, ComplianceLevel::Full);
+        assert_eq!(record.risk_level, RiskLevel::Medium);
+        assert_eq!(
+            record.transaction_limits.get(Symbol::new(&env, "USD")),
+            Some(200_000_000)
+        );
+    }
+
+    #[test]
+    fn test_update_nonexistent_user_fails() {
+        let (env, admin) = setup_env();
+        let user = Address::generate(&env);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            ComplianceTrait::update_user_compliance(
+                env.clone(),
+                user.clone(),
+                ComplianceLevel::Full,
+                RiskLevel::Low,
+                Vec::new(&env),
+                Map::new(&env),
+            );
+        }));
+        assert!(result.is_err());
+    }
+
+    // ─── Transaction compliance tests ────────────────────────────────────
+
+    #[test]
+    fn test_check_transaction_compliance_approved() {
+        let (env, admin) = setup_env();
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        register_test_user(&env, &admin, &sender, "US", RiskLevel::Low, ComplianceLevel::Full);
+        register_test_user(&env, &admin, &receiver, "US", RiskLevel::Low, ComplianceLevel::Full);
+
+        let tx_id: BytesN<32> = env.crypto().sha256(&(1u64, env.ledger().timestamp()).into());
+        let result = ComplianceTrait::check_transaction_compliance(
+            env.clone(),
+            tx_id.clone(),
+            sender.clone(),
+            receiver.clone(),
+            5_000_000,
+            Symbol::new(&env, "USD"),
+            Symbol::new(&env, "US"),
+            Symbol::new(&env, "US"),
+        );
+
+        assert!(result.approved);
+        assert_eq!(result.reason, Symbol::new(&env, "APPROVED"));
+    }
+
+    #[test]
+    fn test_check_transaction_unregistered_sender() {
+        let (env, admin) = setup_env();
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+
+        let tx_id: BytesN<32> = env.crypto().sha256(&(2u64, env.ledger().timestamp()).into());
+        let result = ComplianceTrait::check_transaction_compliance(
+            env.clone(),
+            tx_id.clone(),
+            sender.clone(),
+            receiver.clone(),
+            1_000,
+            Symbol::new(&env, "USD"),
+            Symbol::new(&env, "US"),
+            Symbol::new(&env, "US"),
+        );
+
+        assert!(!result.approved);
+        assert_eq!(result.reason, Symbol::new(&env, "SENDER_NOT_REGISTERED"));
+    }
+
+    #[test]
+    fn test_check_transaction_unregistered_receiver() {
+        let (env, admin) = setup_env();
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        register_test_user(&env, &admin, &sender, "US", RiskLevel::Low, ComplianceLevel::Full);
+
+        let tx_id: BytesN<32> = env.crypto().sha256(&(3u64, env.ledger().timestamp()).into());
+        let result = ComplianceTrait::check_transaction_compliance(
+            env.clone(),
+            tx_id.clone(),
+            sender.clone(),
+            receiver.clone(),
+            1_000,
+            Symbol::new(&env, "USD"),
+            Symbol::new(&env, "US"),
+            Symbol::new(&env, "US"),
+        );
+
+        assert!(!result.approved);
+        assert_eq!(result.reason, Symbol::new(&env, "RECEIVER_NOT_REGISTERED"));
+    }
+
+    #[test]
+    fn test_check_transaction_restricted_user() {
+        let (env, admin) = setup_env();
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        register_test_user(&env, &admin, &sender, "US", RiskLevel::Restricted, ComplianceLevel::Basic);
+        register_test_user(&env, &admin, &receiver, "US", RiskLevel::Low, ComplianceLevel::Full);
+
+        let tx_id: BytesN<32> = env.crypto().sha256(&(4u64, env.ledger().timestamp()).into());
+        let result = ComplianceTrait::check_transaction_compliance(
+            env.clone(),
+            tx_id.clone(),
+            sender.clone(),
+            receiver.clone(),
+            1_000,
+            Symbol::new(&env, "USD"),
+            Symbol::new(&env, "US"),
+            Symbol::new(&env, "US"),
+        );
+
+        assert!(!result.approved);
+        assert_eq!(result.reason, Symbol::new(&env, "RESTRICTED_USER"));
+    }
+
+    #[test]
+    fn test_check_transaction_exceeds_limit() {
+        let (env, admin) = setup_env();
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        register_test_user(&env, &admin, &sender, "US", RiskLevel::Low, ComplianceLevel::Full);
+        register_test_user(&env, &admin, &receiver, "US", RiskLevel::Low, ComplianceLevel::Full);
+
+        let tx_id: BytesN<32> = env.crypto().sha256(&(5u64, env.ledger().timestamp()).into());
+        let result = ComplianceTrait::check_transaction_compliance(
+            env.clone(),
+            tx_id.clone(),
+            sender.clone(),
+            receiver.clone(),
+            999_999_999,
+            Symbol::new(&env, "USD"),
+            Symbol::new(&env, "US"),
+            Symbol::new(&env, "US"),
+        );
+
+        assert!(!result.approved);
+        assert_eq!(result.reason, Symbol::new(&env, "EXCEEDS_LIMIT"));
+    }
+
+    // ─── Compliance rule tests ───────────────────────────────────────────
+
+    #[test]
+    fn test_add_and_get_compliance_rules() {
+        let (env, admin) = setup_env();
+
+        let mut conditions: Map<Symbol, Vec<u8>> = Map::new(&env);
+        conditions.set(Symbol::new(&env, "HIGH_AMOUNT_THRESHOLD"), 1_000_000i128.to_be_bytes().to_vec());
+
+        let rule_id = ComplianceTrait::add_compliance_rule(
+            env.clone(),
+            Symbol::new(&env, "HighValueCheck"),
+            Symbol::new(&env, "Flags transactions over 1000 USD"),
+            conditions,
+            Map::new(&env),
+            5,
+        );
+
+        assert!(!rule_id.is_zero());
+
+        let rules = ComplianceTrait::get_compliance_rules(env.clone());
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules.get(0).name, Symbol::new(&env, "HighValueCheck"));
+    }
+
+    #[test]
+    fn test_update_compliance_rule_active() {
+        let (env, admin) = setup_env();
+
+        let rule_id = ComplianceTrait::add_compliance_rule(
+            env.clone(),
+            Symbol::new(&env, "TestRule"),
+            Symbol::new(&env, "A test rule"),
+            Map::new(&env),
+            Map::new(&env),
+            1,
+        );
+
+        let updated = ComplianceTrait::update_compliance_rule(
+            env.clone(),
+            rule_id.clone(),
+            false,
+            10,
+        );
+        assert!(updated);
+
+        let rules = ComplianceTrait::get_compliance_rules(env.clone());
+        let rule = rules.get(0);
+        assert!(!rule.active);
+        assert_eq!(rule.priority, 10);
+    }
+
+    #[test]
+    fn test_high_priority_rule_triggers_rejection() {
+        let (env, admin) = setup_env();
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        register_test_user(&env, &admin, &sender, "US", RiskLevel::Low, ComplianceLevel::Full);
+        register_test_user(&env, &admin, &receiver, "US", RiskLevel::Low, ComplianceLevel::Full);
+
+        let mut conditions: Map<Symbol, Vec<u8>> = Map::new(&env);
+        conditions.set(Symbol::new(&env, "HIGH_RISK_SENDER"), Vec::new(&env));
+
+        ComplianceTrait::add_compliance_rule(
+            env.clone(),
+            Symbol::new(&env, "HighRiskBlock"),
+            Symbol::new(&env, "Blocks high risk senders"),
+            conditions,
+            Map::new(&env),
+            8,
+        );
+
+        let tx_id: BytesN<32> = env.crypto().sha256(&(6u64, env.ledger().timestamp()).into());
+        let result = ComplianceTrait::check_transaction_compliance(
+            env.clone(),
+            tx_id.clone(),
+            sender.clone(),
+            receiver.clone(),
+            1_000,
+            Symbol::new(&env, "USD"),
+            Symbol::new(&env, "US"),
+            Symbol::new(&env, "US"),
+        );
+
+        assert!(!result.approved);
+        assert_eq!(result.reason, Symbol::new(&env, "HIGH_PRIORITY_RULE_TRIGGERED"));
+    }
+
+    // ─── Restricted jurisdiction tests ───────────────────────────────────
+
+    #[test]
+    fn test_add_restricted_jurisdiction() {
+        let (env, admin) = setup_env();
+
+        ComplianceTrait::add_restricted_jurisdiction(
+            env.clone(),
+            Symbol::new(&env, "IR"),
+        );
+
+        assert!(ComplianceTrait::is_jurisdiction_restricted(
+            env.clone(),
+            Symbol::new(&env, "IR"),
+        ));
+    }
+
+    #[test]
+    fn test_remove_restricted_jurisdiction() {
+        let (env, admin) = setup_env();
+
+        ComplianceTrait::add_restricted_jurisdiction(
+            env.clone(),
+            Symbol::new(&env, "KP"),
+        );
+        assert!(ComplianceTrait::is_jurisdiction_restricted(
+            env.clone(),
+            Symbol::new(&env, "KP"),
+        ));
+
+        ComplianceTrait::remove_restricted_jurisdiction(
+            env.clone(),
+            Symbol::new(&env, "KP"),
+        );
+        assert!(!ComplianceTrait::is_jurisdiction_restricted(
+            env.clone(),
+            Symbol::new(&env, "KP"),
+        ));
+    }
+
+    #[test]
+    fn test_transaction_to_restricted_jurisdiction_denied() {
+        let (env, admin) = setup_env();
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        register_test_user(&env, &admin, &sender, "US", RiskLevel::Low, ComplianceLevel::Full);
+        register_test_user(&env, &admin, &receiver, "IR", RiskLevel::Low, ComplianceLevel::Full);
+
+        ComplianceTrait::add_restricted_jurisdiction(
+            env.clone(),
+            Symbol::new(&env, "IR"),
+        );
+
+        let tx_id: BytesN<32> = env.crypto().sha256(&(7u64, env.ledger().timestamp()).into());
+        let result = ComplianceTrait::check_transaction_compliance(
+            env.clone(),
+            tx_id.clone(),
+            sender.clone(),
+            receiver.clone(),
+            1_000,
+            Symbol::new(&env, "USD"),
+            Symbol::new(&env, "US"),
+            Symbol::new(&env, "IR"),
+        );
+
+        assert!(!result.approved);
+        assert_eq!(result.reason, Symbol::new(&env, "RESTRICTED_JURISDICTION"));
+    }
+
+    #[test]
+    fn test_transaction_from_restricted_jurisdiction_denied() {
+        let (env, admin) = setup_env();
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        register_test_user(&env, &admin, &sender, "CU", RiskLevel::Low, ComplianceLevel::Full);
+        register_test_user(&env, &admin, &receiver, "US", RiskLevel::Low, ComplianceLevel::Full);
+
+        ComplianceTrait::add_restricted_jurisdiction(
+            env.clone(),
+            Symbol::new(&env, "CU"),
+        );
+
+        let tx_id: BytesN<32> = env.crypto().sha256(&(8u64, env.ledger().timestamp()).into());
+        let result = ComplianceTrait::check_transaction_compliance(
+            env.clone(),
+            tx_id.clone(),
+            sender.clone(),
+            receiver.clone(),
+            1_000,
+            Symbol::new(&env, "USD"),
+            Symbol::new(&env, "CU"),
+            Symbol::new(&env, "US"),
+        );
+
+        assert!(!result.approved);
+        assert_eq!(result.reason, Symbol::new(&env, "RESTRICTED_JURISDICTION"));
+    }
+
+    // ─── Transaction history tests ───────────────────────────────────────
+
+    #[test]
+    fn test_transaction_history_tracks_checks() {
+        let (env, admin) = setup_env();
+        let sender = Address::generate(&env);
+        let receiver = Address::generate(&env);
+        register_test_user(&env, &admin, &sender, "US", RiskLevel::Low, ComplianceLevel::Full);
+        register_test_user(&env, &admin, &receiver, "US", RiskLevel::Low, ComplianceLevel::Full);
+
+        let tx_id: BytesN<32> = env.crypto().sha256(&(9u64, env.ledger().timestamp()).into());
+        ComplianceTrait::check_transaction_compliance(
+            env.clone(),
+            tx_id.clone(),
+            sender.clone(),
+            receiver.clone(),
+            5_000_000,
+            Symbol::new(&env, "USD"),
+            Symbol::new(&env, "US"),
+            Symbol::new(&env, "US"),
+        );
+
+        let sender_history = ComplianceTrait::get_transaction_history(env.clone(), sender.clone());
+        assert_eq!(sender_history.len(), 1);
+        assert_eq!(sender_history.get(0).transaction_id, tx_id);
+
+        let receiver_history = ComplianceTrait::get_transaction_history(env.clone(), receiver.clone());
+        assert_eq!(receiver_history.len(), 1);
+    }
+
+    #[test]
+    fn test_transaction_history_empty_for_new_user() {
+        let (env, admin) = setup_env();
+        let user = Address::generate(&env);
+        register_test_user(&env, &admin, &user, "US", RiskLevel::Low, ComplianceLevel::Full);
+
+        let history = ComplianceTrait::get_transaction_history(env.clone(), user.clone());
+        assert_eq!(history.len(), 0);
+    }
+
+    // ─── Edge cases ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_get_nonexistent_user_fails() {
+        let (env, _admin) = setup_env();
+        let user = Address::generate(&env);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            ComplianceTrait::get_user_compliance(env.clone(), user.clone());
+        }));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_duplicate_jurisdiction_not_added() {
+        let (env, admin) = setup_env();
+
+        ComplianceTrait::add_restricted_jurisdiction(env.clone(), Symbol::new(&env, "IR"));
+        ComplianceTrait::add_restricted_jurisdiction(env.clone(), Symbol::new(&env, "IR"));
+
+        assert!(ComplianceTrait::is_jurisdiction_restricted(env.clone(), Symbol::new(&env, "IR")));
+    }
+}
+
 impl ComplianceContract {
     fn evaluate_rule(
         env: &Env,
