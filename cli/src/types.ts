@@ -103,6 +103,7 @@ export interface StatusStreamOptions {
   follow: boolean;
   dbPath: string;
   horizonUrl: string;
+  verbose?: boolean;
 }
 
 export interface RetryOptions {
@@ -110,6 +111,8 @@ export interface RetryOptions {
   maxRetries: number;
   backoffBase: number;
   backoffMax: number;
+  /** Total retry time budget in milliseconds (0 = no time limit). */
+  maxTotalRetryTime: number;
   dbPath: string;
   sourceSecret: string;
   horizonUrl: string;

@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ── Rust Soroban contracts ──────────────────────────────────────────────────
+  rust:
+    name: Rust Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy lint
+        run: cargo clippy -- -D warnings
+
+      - name: Build contracts
+        run: npm run build:contracts
+
+      - name: Run contract tests
+        run: npm run test:contracts
+
+  # ── TypeScript packages ─────────────────────────────────────────────────────
+  typescript:
+    name: TypeScript Lint, Type-Check, Test & Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies (SDK)
+        working-directory: ./sdk
+        run: npm ci
+
+      - name: Install dependencies (CLI)
+        working-directory: ./cli
+        run: npm ci
+
+      - name: Install dependencies (UI)
+        working-directory: ./ui
+        run: npm ci
+
+      - name: Build (SDK) — required for CLI/UI type-check
+        working-directory: ./sdk
+        run: npm run build
+
+      - name: Lint (SDK)
+        working-directory: ./sdk
+        run: npm run lint
+
+      - name: Lint (CLI)
+        working-directory: ./cli
+        run: npm run lint
+
+      - name: Lint (UI)
+        working-directory: ./ui
+        run: npm run lint
+
+      - name: Type-check (SDK)
+        working-directory: ./sdk
+        run: npx tsc --noEmit
+
+      - name: Type-check (CLI)
+        working-directory: ./cli
+        run: npx tsc --noEmit
+
+      - name: Type-check (UI)
+        working-directory: ./ui
+        run: npx tsc --noEmit
+
+      - name: Test (SDK)
+        working-directory: ./sdk
+        run: npm test
+
+      - name: Smoke test — cross-border payment integration
+        working-directory: ./sdk
+        run: npx jest --testPathPattern=crossBorderPayment.integration.test --no-coverage
+
+      - name: Test (CLI)
+        working-directory: ./cli
+        run: npm test
+
+      - name: Test (UI)
+        working-directory: ./ui
+        run: npm test -- --passWithNoTests --forceExit
+
+      - name: Build (CLI)
+        working-directory: ./cli
+        run: npm run build
+
+      - name: Build (UI)
+        working-directory: ./ui
+        run: npm run build

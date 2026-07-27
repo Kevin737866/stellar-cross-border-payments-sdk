@@ -8,6 +8,15 @@ export enum LogLevel {
   SILENT = 4,
 }
 
+const COLORS = {
+  reset:  '\x1b[0m',
+  cyan:   '\x1b[36m',
+  green:  '\x1b[32m',
+  yellow: '\x1b[33m',
+  red:    '\x1b[31m',
+  gray:   '\x1b[90m',
+};
+
 let currentLevel = LogLevel.INFO;
 
 export function setLogLevel(level: LogLevel): void {
