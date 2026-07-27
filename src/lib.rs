@@ -8,5 +8,5 @@ pub use compliance::{
     ComplianceCheck, ComplianceContract, ComplianceLevel, ComplianceRecord, RiskLevel,
     TransactionRule,
 };
-pub use escrow::{Dispute, Escrow, EscrowContract, EscrowStatus};
+pub use escrow::{Dispute, DisputeEvidence, Escrow, EscrowContract, EscrowStatus, get_evidence, store_evidence};
 pub use rate_oracle::{AggregatedRate, ExchangeRate, RateOracleContract, RateSource};

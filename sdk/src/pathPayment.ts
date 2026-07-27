@@ -43,19 +43,17 @@ export class PathPaymentService {
     const horizon = this.client.getHorizon();
     
     // Query path payments from Horizon
-    const paths = await horizon.strictReceivePaths(
-      fromAsset,
-      destinationAmount,
-      toAsset
-    ).call();
+    const paths = await horizon
+      .strictReceivePaths([fromAsset], toAsset, destinationAmount)
+      .call();
 
     if (paths.records.length === 0) {
       throw new Error(`No path found from ${fromAsset.toString()} to ${toAsset.toString()}`);
     }
 
     // Sort by cheapest source amount
-    const bestRecord = paths.records.sort((a: any, b: any) => 
-      new BigNumber(a.source_amount).comparedTo(b.source_amount)
+    const bestRecord = paths.records.sort((a: any, b: any) =>
+      new BigNumber(a.source_amount).comparedTo(b.source_amount) ?? 0
     )[0];
 
     const pathStrings = bestRecord.path.map((p: any) => 
