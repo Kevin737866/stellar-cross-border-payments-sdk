@@ -8,6 +8,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "jest",
+    "test:coverage": "jest --coverage",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "clean": "rimraf dist"
   },

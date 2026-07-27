@@ -139,10 +139,51 @@ describe('parseCSV — default values for missing optional fields', () => {
     expect(record.escrow_duration).toBe(0);
   });
 
-  it('defaults amount to "0" when amount column is absent', () => {
+});
+
+// ---------------------------------------------------------------------------
+// Tests — missing required columns
+// ---------------------------------------------------------------------------
+
+describe('parseCSV — missing required columns', () => {
+  it('throws when destination column is missing', () => {
+    const csv = `amount\n100`;
+    expect(() => parseCSVString(csv)).toThrow(/Missing required CSV columns/);
+    expect(() => parseCSVString(csv)).toThrow(/"destination"/);
+  });
+
+  it('throws when amount column is missing', () => {
     const csv = `destination\nGBDEVU63Y6BHHYWUMAS6NHXVWUIQEJBACC7F6QXJZUCM4TBNEOUFL2`;
-    const [record] = parseCSVString(csv);
-    expect(record.amount).toBe('0');
+    expect(() => parseCSVString(csv)).toThrow(/Missing required CSV columns/);
+    expect(() => parseCSVString(csv)).toThrow(/"amount"/);
+  });
+
+  it('throws when both destination and amount are missing', () => {
+    const csv = `asset,asset_issuer,memo\nXLM,GA5Z,test`;
+    expect(() => parseCSVString(csv)).toThrow(/Missing required CSV columns/);
+    expect(() => parseCSVString(csv)).toThrow(/"destination"/);
+    expect(() => parseCSVString(csv)).toThrow(/"amount"/);
+  });
+
+  it('error message includes the found columns', () => {
+    const csv = `asset,memo\nXLM,test`;
+    expect(() => parseCSVString(csv)).toThrow(/Found columns:/);
+    expect(() => parseCSVString(csv)).toThrow(/"asset"/);
+    expect(() => parseCSVString(csv)).toThrow(/"memo"/);
+  });
+
+  it('error message lists the required columns', () => {
+    const csv = `asset\nXLM`;
+    expect(() => parseCSVString(csv)).toThrow(/".*destination.*"/);
+    expect(() => parseCSVString(csv)).toThrow(/".*amount.*"/);
+  });
+
+  it('does not throw when all required columns are present', () => {
+    const csv = `destination,amount,name,extra_field\nGBDEVU,100,Test,ignored`;
+    const records = parseCSVString(csv);
+    expect(records).toHaveLength(1);
+    expect(records[0].destination).toBe('GBDEVU');
+    expect(records[0].amount).toBe('100');
   });
 });
 

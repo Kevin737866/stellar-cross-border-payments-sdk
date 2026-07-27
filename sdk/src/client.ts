@@ -67,16 +67,21 @@ export class StellarClient {
       const response = await this.httpClient.get(`/accounts/${accountId}`);
       const account = response.data;
 
+      // Defensively handle ledgers where balances or flags may be absent
+      const balances: any[] = Array.isArray(account.balances) ? account.balances : [];
+      const nativeEntry = balances.find((b: any) => b.asset_type === 'native');
+      const flags = account.flags ?? {};
+
       return {
         accountId: account.id,
-        balance:
-          account.balances.find((b: any) => b.asset_type === 'native')?.balance ?? '0',
+        // Fall back to '0' when no native (XLM) balance entry is present
+        balance: nativeEntry?.balance ?? '0',
         sequence: account.sequence,
-        numSubentries: account.num_subentries,
+        numSubentries: account.num_subentries ?? 0,
         flags: {
-          authRequired: account.flags.auth_required,
-          authRevocable: account.flags.auth_revocable,
-          authImmutable: account.flags.auth_immutable,
+          authRequired: flags.auth_required ?? false,
+          authRevocable: flags.auth_revocable ?? false,
+          authImmutable: flags.auth_immutable ?? false,
         },
       };
     } catch (error) {
@@ -124,12 +129,22 @@ export class StellarClient {
     } = {}
   ): Promise<TransactionBuilder> {
     const fee = options.fee ?? (options.feeBump ? '2000' : BASE_FEE);
-    const timeout = options.timeout ?? TimeoutInfinite;
+    const timeoutSeconds = options.timeout ?? TimeoutInfinite;
+
+    // Convert a relative timeout (seconds) into an absolute Unix maxTime.
+    // TimeoutInfinite (0) means no expiry — pass 0 to disable the upper bound.
+    // Any positive value is treated as seconds-from-now, which is the correct
+    // semantics for transaction timebounds: minTime=0 (valid immediately),
+    // maxTime=<absolute unix timestamp> (expires after N seconds).
+    const maxTime =
+      timeoutSeconds === TimeoutInfinite || timeoutSeconds === 0
+        ? TimeoutInfinite
+        : Math.floor(Date.now() / 1000) + timeoutSeconds;
 
     let builder = new TransactionBuilder(sourceAccount, {
       fee,
       networkPassphrase: this.config.networkPassphrase,
-      timebounds: { minTime: 0, maxTime: timeout },
+      timebounds: { minTime: 0, maxTime },
     });
 
     if (options.memo) {
@@ -167,6 +182,49 @@ export class StellarClient {
   async simulateTransaction(transactionXdr: string): Promise<any> {
     try {
       return await this.sorobanRpc.simulateTransaction(transactionXdr as any);
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async prepareSorobanTransaction(
+    transaction: TransactionBuilder,
+    signer: Keypair
+  ): Promise<TransactionBuilder> {
+    const tx = transaction.build();
+    const prepared = await this.sorobanRpc.prepareTransaction(tx);
+
+    if (!prepared) {
+      throw new Error('Soroban prepare transaction returned no result');
+    }
+
+    const signedTx = prepared.transaction as unknown as TransactionBuilder;
+    signedTx.sign(signer);
+    return signedTx;
+  }
+
+  async sendSorobanTransaction(transaction: any): Promise<TransactionResult> {
+    try {
+      const tx = transaction.transaction || (typeof transaction.build === 'function' ? transaction.build() : transaction);
+      const response = await this.sorobanRpc.sendTransaction(tx);
+      return {
+        hash: response.hash,
+        success: response.status === 'PENDING' || response.status === 'SUCCESS',
+        result: response,
+      };
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getSorobanTransactionStatus(hash: string): Promise<TransactionResult> {
+    try {
+      const response = await this.sorobanRpc.getTransaction(hash);
+      return {
+        hash,
+        success: response.status === 'SUCCESS',
+        result: response,
+      };
     } catch (error) {
       throw this.handleError(error);
     }
