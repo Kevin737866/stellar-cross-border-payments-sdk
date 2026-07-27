@@ -253,7 +253,7 @@ export class BatchDatabase {
                skipped_payments = ?
            WHERE batch_id = ?`,
         )
-        .run(stats.processed, stats.successful, stats.failed, stats.skipped, batchId);
+        .run(stats.processed ?? 0, stats.successful ?? 0, stats.failed ?? 0, stats.skipped ?? 0, batchId);
     });
 
     refresh();
@@ -365,7 +365,7 @@ export class BatchDatabase {
       .prepare(
         `SELECT * FROM batches
          WHERE status IN ('paused', 'running')
-         ORDER BY started_at DESC`,
+         ORDER BY started_at DESC, rowid DESC`,
       )
       .all() as Record<string, unknown>[];
     return rows.map((r) => this.rowToBatchState(r));
@@ -381,7 +381,7 @@ export class BatchDatabase {
 
   getRecentBatches(limit: number = 10): BatchState[] {
     const rows = this.db
-      .prepare('SELECT * FROM batches ORDER BY started_at DESC LIMIT ?')
+      .prepare('SELECT * FROM batches ORDER BY started_at DESC, rowid DESC LIMIT ?')
       .all(limit) as Record<string, unknown>[];
     return rows.map((r) => this.rowToBatchState(r));
   }
