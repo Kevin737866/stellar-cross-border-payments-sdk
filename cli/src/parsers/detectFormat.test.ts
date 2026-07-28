@@ -47,4 +47,24 @@ describe('detectFormat — case-insensitive file extension detection', () => {
   test('defaults to CSV for an unknown extension', () => {
     expect(detectFormat('file.unknown')).toBe(InputFormat.CSV);
   });
+
+  // Edge cases
+  test('handles multiple dots in filename', () => {
+    expect(detectFormat('data.payments.csv')).toBe(InputFormat.CSV);
+  });
+  test('handles file without extension', () => {
+    expect(detectFormat('README')).toBe(InputFormat.CSV);
+  });
+  test('handles just an extension string', () => {
+    expect(detectFormat('.json')).toBe(InputFormat.JSON);
+  });
+  test('handles empty string', () => {
+    expect(detectFormat('')).toBe(InputFormat.CSV);
+  });
+  test('handles XLSX with mixed case', () => {
+    expect(detectFormat('report.XlSx')).toBe(InputFormat.XLSX);
+  });
+  test('handles SWIFT extension with mixed case', () => {
+    expect(detectFormat('wire.Swift')).toBe(InputFormat.MT103);
+  });
 });
