@@ -273,14 +273,25 @@ export class StellarClient {
     }
   }
 
-  /** Returns the raw Operation2 — callers should cast via `as unknown as Operation` */
-  invokeContractMethod(
+  async invokeContractMethod(
     contractId: string,
     method: string,
-    args: xdr.ScVal[] = []
-  ): Operation {
+    args: xdr.ScVal[] = [],
+    sourceAccount: Account,
+    signer: Keypair
+  ): Promise<TransactionResult> {
     const contract = new Contract(contractId);
-    return contract.call(method, ...args) as unknown as Operation;
+    const operation = contract.call(method, ...args) as unknown as Operation;
+
+    const builder = await this.buildTransaction(sourceAccount, [operation]);
+    const prepared = await this.prepareSorobanTransaction(builder, signer);
+    const result = await this.sendSorobanTransaction(prepared);
+
+    if (result.hash) {
+      return await this.waitForTransaction(result.hash);
+    }
+
+    return result;
   }
 
   getEscrowContract(): Contract {
