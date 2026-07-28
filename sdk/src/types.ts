@@ -128,7 +128,7 @@ export interface PaymentRequest {
   amount: string;
   token: string;
   release_time?: number;
-  metadata?: Record<string, Uint8Array>;
+  metadata?: Record<string, Uint8Array | string | number | boolean | null | undefined>;
 }
 
 export interface PaymentOptions {
