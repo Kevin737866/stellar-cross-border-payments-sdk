@@ -548,13 +548,42 @@ export class StellarPayments {
     return new Account(accountId, accountInfo.sequence);
   }
 
-  private convertMetadataToScVal(metadata: Record<string, Uint8Array>): xdr.ScVal {
-    const entries = Object.entries(metadata).map(([key, value]) =>
-      new xdr.ScMapEntry({
-        key: xdr.ScVal.scvSymbol(key),
-        val: xdr.ScVal.scvBytes(Buffer.from(value)),
-      })
-    );
+  private convertMetadataToScVal(
+    metadata?: Record<string, Uint8Array | string | number | boolean | null | undefined>
+  ): xdr.ScVal {
+    if (!metadata || typeof metadata !== 'object') {
+      return xdr.ScVal.scvMap([]);
+    }
+
+    const entries: xdr.ScMapEntry[] = [];
+    for (const [key, value] of Object.entries(metadata)) {
+      if (value === null || value === undefined) {
+        continue;
+      }
+
+      let valScVal: xdr.ScVal;
+      if (value instanceof Uint8Array || Buffer.isBuffer(value)) {
+        valScVal = xdr.ScVal.scvBytes(Buffer.from(value));
+      } else if (typeof value === 'string') {
+        valScVal = xdr.ScVal.scvBytes(Buffer.from(value, 'utf8'));
+      } else if (typeof value === 'number' || typeof value === 'bigint') {
+        valScVal = xdr.ScVal.scvBytes(Buffer.from(value.toString(), 'utf8'));
+      } else if (typeof value === 'boolean') {
+        valScVal = xdr.ScVal.scvBytes(Buffer.from(value ? 'true' : 'false', 'utf8'));
+      } else {
+        throw new Error(
+          `Metadata key "${key}": unsupported value type "${typeof value}".`
+        );
+      }
+
+      entries.push(
+        new xdr.ScMapEntry({
+          key: xdr.ScVal.scvSymbol(key),
+          val: valScVal,
+        })
+      );
+    }
+
     return xdr.ScVal.scvMap(entries);
   }
 
