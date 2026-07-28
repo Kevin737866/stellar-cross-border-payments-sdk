@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol, Map, Vec, BytesN};
+use soroban_sdk::{contractimpl, contracttype, Address, Env, Symbol, Map, Vec, BytesN};
 
 #[contracttype]
 pub enum ComplianceLevel {
@@ -9,6 +9,7 @@ pub enum ComplianceLevel {
 }
 
 #[contracttype]
+#[derive(PartialEq)]
 pub enum RiskLevel {
     Low,
     Medium,
@@ -29,6 +30,7 @@ pub struct ComplianceRecord {
 }
 
 #[contracttype]
+#[derive(Clone)]
 pub struct TransactionRule {
     pub id: BytesN<32>,
     pub name: Symbol,
@@ -56,71 +58,8 @@ pub struct ComplianceCheck {
 
 pub struct ComplianceContract;
 
-#[contract]
-pub trait ComplianceTrait {
-    fn register_user(
-        env: Env,
-        user: Address,
-        kyc_level: ComplianceLevel,
-        risk_level: RiskLevel,
-        jurisdiction: Symbol,
-        aml_flags: Vec<Symbol>,
-        transaction_limits: Map<Symbol, i128>,
-    ) -> bool;
-
-    fn update_user_compliance(
-        env: Env,
-        user: Address,
-        kyc_level: ComplianceLevel,
-        risk_level: RiskLevel,
-        aml_flags: Vec<Symbol>,
-        transaction_limits: Map<Symbol, i128>,
-    ) -> bool;
-
-    fn check_transaction_compliance(
-        env: Env,
-        transaction_id: BytesN<32>,
-        from_user: Address,
-        to_user: Address,
-        amount: i128,
-        currency: Symbol,
-        jurisdiction_from: Symbol,
-        jurisdiction_to: Symbol,
-    ) -> ComplianceCheck;
-
-    fn add_compliance_rule(
-        env: Env,
-        name: Symbol,
-        description: Symbol,
-        conditions: Map<Symbol, Vec<u8>>,
-        actions: Map<Symbol, Vec<u8>>,
-        priority: u8,
-    ) -> BytesN<32>;
-
-    fn update_compliance_rule(
-        env: Env,
-        rule_id: BytesN<32>,
-        active: bool,
-        priority: u8,
-    ) -> bool;
-
-    fn get_user_compliance(env: Env, user: Address) -> ComplianceRecord;
-
-    fn get_compliance_rules(env: Env) -> Vec<TransactionRule>;
-
-    fn get_transaction_history(env: Env, user: Address) -> Vec<ComplianceCheck>;
-
-    fn set_admin(env: Env, admin: Address);
-
-    fn add_restricted_jurisdiction(env: Env, jurisdiction: Symbol);
-
-    fn remove_restricted_jurisdiction(env: Env, jurisdiction: Symbol);
-
-    fn is_jurisdiction_restricted(env: Env, jurisdiction: Symbol) -> bool;
-}
-
 #[contractimpl]
-impl ComplianceTrait for ComplianceContract {
+impl ComplianceContract {
     fn register_user(
         env: Env,
         user: Address,

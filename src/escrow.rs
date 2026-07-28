@@ -1,5 +1,5 @@
 use soroban_sdk::{
-    contract, contractimpl, contracttype, Address, Bytes, BytesN, Env, Map, Symbol, Vec,
+    contractimpl, contracttype, Address, Bytes, BytesN, Env, Map, Symbol, Vec,
 };
 use soroban_sdk::token::Client as TokenClient;
 
@@ -78,57 +78,8 @@ pub fn get_evidence(env: &Env, dispute_id: u64) -> Option<DisputeEvidence> {
 
 pub struct EscrowContract;
 
-#[contract]
-pub trait EscrowTrait {
-    /// One-time initialisation — sets the admin address.
-    /// Must be called before any other admin-gated function.
-    fn initialize(env: Env, admin: Address) -> bool;
-
-    fn create_escrow(
-        env: Env,
-        sender: Address,
-        receiver: Address,
-        amount: i128,
-        token: Address,
-        release_time: u64,
-        metadata: Map<Symbol, Vec<u8>>,
-    ) -> BytesN<32>;
-
-    fn release_escrow(env: Env, escrow_id: BytesN<32>) -> bool;
-
-    fn refund_escrow(env: Env, escrow_id: BytesN<32>) -> bool;
-
-    fn dispute_escrow(
-        env: Env,
-        escrow_id: BytesN<32>,
-        challenger: Address,
-        reason: Symbol,
-        evidence: Vec<u8>,
-    ) -> BytesN<32>;
-
-    fn resolve_dispute(
-        env: Env,
-        dispute_id: BytesN<32>,
-        in_favor_of_challenger: bool,
-    ) -> bool;
-
-    fn get_escrow(env: Env, escrow_id: BytesN<32>) -> Escrow;
-
-    fn get_escrow_status(env: Env, escrow_id: BytesN<32>) -> EscrowStatus;
-
-    fn get_dispute(env: Env, dispute_id: BytesN<32>) -> Dispute;
-
-    fn get_disputes_by_escrow(env: Env, escrow_id: BytesN<32>) -> Vec<BytesN<32>>;
-
-    fn get_dispute_by_escrow(env: Env, escrow_id: BytesN<32>) -> Option<Dispute>;
-
-    fn get_user_escrows(env: Env, user: Address) -> Vec<BytesN<32>>;
-
-    fn get_user_disputes(env: Env, user: Address) -> Vec<BytesN<32>>;
-}
-
 #[contractimpl]
-impl EscrowTrait for EscrowContract {
+impl EscrowContract {
     // ── initialize ──────────────────────────────────────────────────────────
 
     fn initialize(env: Env, admin: Address) -> bool {
@@ -574,13 +525,13 @@ mod tests {
         let challenger = sender.clone();
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         // Create a token for the escrow
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -591,7 +542,7 @@ mod tests {
         );
         
         // Create dispute
-        let dispute_id = EscrowTrait::dispute_escrow(
+        let dispute_id = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             challenger.clone(),
@@ -603,7 +554,7 @@ mod tests {
         assert!(!dispute_id.is_zero()); // Should be a non-zero hash
         
         // Verify we can retrieve the dispute by ID
-        let dispute = EscrowTrait::get_dispute(env.clone(), dispute_id);
+        let dispute = EscrowContract::get_dispute(env.clone(), dispute_id);
         assert_eq!(dispute.escrow_id, escrow_id);
         assert_eq!(dispute.challenger, challenger);
     }
@@ -618,12 +569,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -634,7 +585,7 @@ mod tests {
         );
         
         // Create dispute
-        let dispute_id = EscrowTrait::dispute_escrow(
+        let dispute_id = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             sender.clone(),
@@ -643,7 +594,7 @@ mod tests {
         );
         
         // Retrieve disputes by escrow ID
-        let dispute_ids = EscrowTrait::get_disputes_by_escrow(env.clone(), escrow_id.clone());
+        let dispute_ids = EscrowContract::get_disputes_by_escrow(env.clone(), escrow_id.clone());
         assert_eq!(dispute_ids.len(), 1);
         assert_eq!(dispute_ids.get(0), dispute_id);
     }
@@ -658,12 +609,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -674,7 +625,7 @@ mod tests {
         );
         
         // Create first dispute
-        let _dispute_id_1 = EscrowTrait::dispute_escrow(
+        let _dispute_id_1 = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             sender.clone(),
@@ -683,7 +634,7 @@ mod tests {
         );
         
         // Retrieve dispute by escrow (convenience method)
-        let dispute_opt = EscrowTrait::get_dispute_by_escrow(env.clone(), escrow_id.clone());
+        let dispute_opt = EscrowContract::get_dispute_by_escrow(env.clone(), escrow_id.clone());
         assert!(dispute_opt.is_some());
         let dispute = dispute_opt.unwrap();
         assert_eq!(dispute.escrow_id, escrow_id);
@@ -699,12 +650,12 @@ mod tests {
         let user2 = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow 1
-        let escrow_id_1 = EscrowTrait::create_escrow(
+        let escrow_id_1 = EscrowContract::create_escrow(
             env.clone(),
             user1.clone(),
             user2.clone(),
@@ -715,7 +666,7 @@ mod tests {
         );
         
         // User1 creates dispute
-        let dispute_id_1 = EscrowTrait::dispute_escrow(
+        let dispute_id_1 = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id_1.clone(),
             user1.clone(),
@@ -724,12 +675,12 @@ mod tests {
         );
         
         // Retrieve user1's disputes
-        let user_disputes = EscrowTrait::get_user_disputes(env.clone(), user1.clone());
+        let user_disputes = EscrowContract::get_user_disputes(env.clone(), user1.clone());
         assert_eq!(user_disputes.len(), 1);
         assert_eq!(user_disputes.get(0), dispute_id_1);
         
         // User2 should have no disputes created
-        let user2_disputes = EscrowTrait::get_user_disputes(env.clone(), user2.clone());
+        let user2_disputes = EscrowContract::get_user_disputes(env.clone(), user2.clone());
         assert_eq!(user2_disputes.len(), 0);
     }
 
@@ -741,14 +692,14 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         let amount = 1000;
         let release_time = env.ledger().timestamp() + 1000;
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -762,7 +713,7 @@ mod tests {
         assert!(!escrow_id.is_zero());
         
         // Verify escrow can be retrieved
-        let escrow = EscrowTrait::get_escrow(env.clone(), escrow_id.clone());
+        let escrow = EscrowContract::get_escrow(env.clone(), escrow_id.clone());
         assert_eq!(escrow.id, escrow_id);
         assert_eq!(escrow.sender, sender);
         assert_eq!(escrow.receiver, receiver);
@@ -780,13 +731,13 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Attempt to create escrow with zero amount - should panic
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            EscrowTrait::create_escrow(
+            EscrowContract::create_escrow(
                 env.clone(),
                 sender.clone(),
                 receiver.clone(),
@@ -808,14 +759,14 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         let current_time = env.ledger().timestamp();
         
         // Attempt to create escrow with past release time - should panic
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            EscrowTrait::create_escrow(
+            EscrowContract::create_escrow(
                 env.clone(),
                 sender.clone(),
                 receiver.clone(),
@@ -837,12 +788,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -853,12 +804,12 @@ mod tests {
         );
         
         // Verify sender can retrieve their escrows
-        let sender_escrows = EscrowTrait::get_user_escrows(env.clone(), sender.clone());
+        let sender_escrows = EscrowContract::get_user_escrows(env.clone(), sender.clone());
         assert_eq!(sender_escrows.len(), 1);
         assert_eq!(sender_escrows.get(0), escrow_id);
         
         // Verify receiver can retrieve their escrows
-        let receiver_escrows = EscrowTrait::get_user_escrows(env.clone(), receiver.clone());
+        let receiver_escrows = EscrowContract::get_user_escrows(env.clone(), receiver.clone());
         assert_eq!(receiver_escrows.len(), 1);
         assert_eq!(receiver_escrows.get(0), escrow_id);
     }
@@ -871,13 +822,13 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         let release_time = env.ledger().timestamp() + 100;
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -889,13 +840,13 @@ mod tests {
         
         // Verify escrow is pending
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Pending
         );
         
         // Attempt to release before time-lock expires - should fail
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            EscrowTrait::release_escrow(env.clone(), escrow_id.clone());
+            EscrowContract::release_escrow(env.clone(), escrow_id.clone());
         }));
         assert!(result.is_err());
         
@@ -903,12 +854,12 @@ mod tests {
         env.ledger().set_timestamp(release_time + 1);
         
         // Release should now succeed
-        let released = EscrowTrait::release_escrow(env.clone(), escrow_id.clone());
+        let released = EscrowContract::release_escrow(env.clone(), escrow_id.clone());
         assert!(released);
         
         // Verify escrow status is completed
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Completed
         );
     }
@@ -921,13 +872,13 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         let release_time = env.ledger().timestamp() + 100;
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -941,12 +892,12 @@ mod tests {
         env.ledger().set_timestamp(release_time);
         
         // Release should succeed at exact expiration time
-        let released = EscrowTrait::release_escrow(env.clone(), escrow_id.clone());
+        let released = EscrowContract::release_escrow(env.clone(), escrow_id.clone());
         assert!(released);
         
         // Verify escrow status is completed
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Completed
         );
     }
@@ -959,13 +910,13 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         let release_time = env.ledger().timestamp() + 100;
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -977,7 +928,7 @@ mod tests {
         
         // Attempt to refund before time-lock expires - should fail
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            EscrowTrait::refund_escrow(env.clone(), escrow_id.clone());
+            EscrowContract::refund_escrow(env.clone(), escrow_id.clone());
         }));
         assert!(result.is_err());
         
@@ -985,12 +936,12 @@ mod tests {
         env.ledger().set_timestamp(release_time + 1);
         
         // Refund should now succeed
-        let refunded = EscrowTrait::refund_escrow(env.clone(), escrow_id.clone());
+        let refunded = EscrowContract::refund_escrow(env.clone(), escrow_id.clone());
         assert!(refunded);
         
         // Verify escrow status is refunded
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Refunded
         );
     }
@@ -1003,13 +954,13 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         let release_time = env.ledger().timestamp() + 100;
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1023,12 +974,12 @@ mod tests {
         env.ledger().set_timestamp(release_time);
         
         // Refund should succeed at exact expiration time
-        let refunded = EscrowTrait::refund_escrow(env.clone(), escrow_id.clone());
+        let refunded = EscrowContract::refund_escrow(env.clone(), escrow_id.clone());
         assert!(refunded);
         
         // Verify escrow status is refunded
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Refunded
         );
     }
@@ -1041,13 +992,13 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         let release_time = env.ledger().timestamp() + 100;
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1059,11 +1010,11 @@ mod tests {
         
         // Advance time and release
         env.ledger().set_timestamp(release_time + 1);
-        EscrowTrait::release_escrow(env.clone(), escrow_id.clone());
+        EscrowContract::release_escrow(env.clone(), escrow_id.clone());
         
         // Attempt to release again - should fail
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            EscrowTrait::release_escrow(env.clone(), escrow_id.clone());
+            EscrowContract::release_escrow(env.clone(), escrow_id.clone());
         }));
         assert!(result.is_err());
     }
@@ -1076,13 +1027,13 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         let release_time = env.ledger().timestamp() + 100;
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1094,11 +1045,11 @@ mod tests {
         
         // Advance time and refund
         env.ledger().set_timestamp(release_time + 1);
-        EscrowTrait::refund_escrow(env.clone(), escrow_id.clone());
+        EscrowContract::refund_escrow(env.clone(), escrow_id.clone());
         
         // Attempt to refund again - should fail
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            EscrowTrait::refund_escrow(env.clone(), escrow_id.clone());
+            EscrowContract::refund_escrow(env.clone(), escrow_id.clone());
         }));
         assert!(result.is_err());
     }
@@ -1111,12 +1062,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1128,12 +1079,12 @@ mod tests {
         
         // Verify initial status is pending
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Pending
         );
         
         // Create dispute
-        let dispute_id = EscrowTrait::dispute_escrow(
+        let dispute_id = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             sender.clone(),
@@ -1146,7 +1097,7 @@ mod tests {
         
         // Verify escrow status is now disputed
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Disputed
         );
     }
@@ -1159,12 +1110,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1175,7 +1126,7 @@ mod tests {
         );
         
         // Sender creates dispute
-        let dispute_id = EscrowTrait::dispute_escrow(
+        let dispute_id = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             sender.clone(),
@@ -1184,7 +1135,7 @@ mod tests {
         );
         
         // Verify dispute was created
-        let dispute = EscrowTrait::get_dispute(env.clone(), dispute_id);
+        let dispute = EscrowContract::get_dispute(env.clone(), dispute_id);
         assert_eq!(dispute.challenger, sender);
         assert_eq!(dispute.escrow_id, escrow_id);
     }
@@ -1197,12 +1148,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1213,7 +1164,7 @@ mod tests {
         );
         
         // Receiver creates dispute
-        let dispute_id = EscrowTrait::dispute_escrow(
+        let dispute_id = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             receiver.clone(),
@@ -1222,7 +1173,7 @@ mod tests {
         );
         
         // Verify dispute was created
-        let dispute = EscrowTrait::get_dispute(env.clone(), dispute_id);
+        let dispute = EscrowContract::get_dispute(env.clone(), dispute_id);
         assert_eq!(dispute.challenger, receiver);
         assert_eq!(dispute.escrow_id, escrow_id);
     }
@@ -1236,12 +1187,12 @@ mod tests {
         let unauthorized = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1253,7 +1204,7 @@ mod tests {
         
         // Unauthorized party attempts to create dispute - should fail
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            EscrowTrait::dispute_escrow(
+            EscrowContract::dispute_escrow(
                 env.clone(),
                 escrow_id.clone(),
                 unauthorized.clone(),
@@ -1273,13 +1224,13 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         let release_time = env.ledger().timestamp() + 100;
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1291,11 +1242,11 @@ mod tests {
         
         // Advance time and complete the escrow
         env.ledger().set_timestamp(release_time + 1);
-        EscrowTrait::release_escrow(env.clone(), escrow_id.clone());
+        EscrowContract::release_escrow(env.clone(), escrow_id.clone());
         
         // Attempt to dispute a completed escrow - should fail
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            EscrowTrait::dispute_escrow(
+            EscrowContract::dispute_escrow(
                 env.clone(),
                 escrow_id.clone(),
                 sender.clone(),
@@ -1315,12 +1266,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1331,7 +1282,7 @@ mod tests {
         );
         
         // Create dispute
-        let dispute_id = EscrowTrait::dispute_escrow(
+        let dispute_id = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             sender.clone(),
@@ -1341,22 +1292,22 @@ mod tests {
         
         // Verify escrow is disputed
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Disputed
         );
         
         // Resolve dispute in favor of challenger (sender gets refund)
-        let resolved = EscrowTrait::resolve_dispute(env.clone(), dispute_id.clone(), true);
+        let resolved = EscrowContract::resolve_dispute(env.clone(), dispute_id.clone(), true);
         assert!(resolved);
         
         // Verify escrow status is refunded
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Refunded
         );
         
         // Verify dispute is marked as resolved
-        let dispute = EscrowTrait::get_dispute(env.clone(), dispute_id);
+        let dispute = EscrowContract::get_dispute(env.clone(), dispute_id);
         assert!(dispute.resolved);
     }
 
@@ -1368,12 +1319,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1384,7 +1335,7 @@ mod tests {
         );
         
         // Create dispute
-        let dispute_id = EscrowTrait::dispute_escrow(
+        let dispute_id = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             sender.clone(),
@@ -1393,17 +1344,17 @@ mod tests {
         );
         
         // Resolve dispute in favor of receiver (receiver gets funds)
-        let resolved = EscrowTrait::resolve_dispute(env.clone(), dispute_id.clone(), false);
+        let resolved = EscrowContract::resolve_dispute(env.clone(), dispute_id.clone(), false);
         assert!(resolved);
         
         // Verify escrow status is completed
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Completed
         );
         
         // Verify dispute is marked as resolved
-        let dispute = EscrowTrait::get_dispute(env.clone(), dispute_id);
+        let dispute = EscrowContract::get_dispute(env.clone(), dispute_id);
         assert!(dispute.resolved);
     }
 
@@ -1415,12 +1366,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1431,7 +1382,7 @@ mod tests {
         );
         
         // Create dispute
-        let dispute_id = EscrowTrait::dispute_escrow(
+        let dispute_id = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             sender.clone(),
@@ -1440,11 +1391,11 @@ mod tests {
         );
         
         // Resolve dispute
-        EscrowTrait::resolve_dispute(env.clone(), dispute_id.clone(), true);
+        EscrowContract::resolve_dispute(env.clone(), dispute_id.clone(), true);
         
         // Attempt to resolve again - should fail
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            EscrowTrait::resolve_dispute(env.clone(), dispute_id.clone(), false);
+            EscrowContract::resolve_dispute(env.clone(), dispute_id.clone(), false);
         }));
         
         assert!(result.is_err());
@@ -1458,12 +1409,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1475,12 +1426,12 @@ mod tests {
         
         // State 1: Pending
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Pending
         );
         
         // State 2: Disputed
-        let dispute_id = EscrowTrait::dispute_escrow(
+        let dispute_id = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             sender.clone(),
@@ -1488,23 +1439,23 @@ mod tests {
             Vec::new(&env),
         );
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Disputed
         );
         
         // Verify dispute is not resolved yet
-        let dispute = EscrowTrait::get_dispute(env.clone(), dispute_id.clone());
+        let dispute = EscrowContract::get_dispute(env.clone(), dispute_id.clone());
         assert!(!dispute.resolved);
         
         // State 3: Resolved (Refunded)
-        EscrowTrait::resolve_dispute(env.clone(), dispute_id.clone(), true);
+        EscrowContract::resolve_dispute(env.clone(), dispute_id.clone(), true);
         assert_eq!(
-            EscrowTrait::get_escrow_status(env.clone(), escrow_id.clone()),
+            EscrowContract::get_escrow_status(env.clone(), escrow_id.clone()),
             EscrowStatus::Refunded
         );
         
         // Verify dispute is now resolved
-        let dispute = EscrowTrait::get_dispute(env.clone(), dispute_id);
+        let dispute = EscrowContract::get_dispute(env.clone(), dispute_id);
         assert!(dispute.resolved);
     }
 
@@ -1516,12 +1467,12 @@ mod tests {
         let receiver = Address::generate(&env);
         
         // Initialize
-        EscrowTrait::initialize(env.clone(), admin.clone());
+        EscrowContract::initialize(env.clone(), admin.clone());
         
         let token = Address::generate(&env);
         
         // Create escrow
-        let escrow_id = EscrowTrait::create_escrow(
+        let escrow_id = EscrowContract::create_escrow(
             env.clone(),
             sender.clone(),
             receiver.clone(),
@@ -1532,7 +1483,7 @@ mod tests {
         );
         
         // Create first dispute
-        let dispute_id_1 = EscrowTrait::dispute_escrow(
+        let dispute_id_1 = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             sender.clone(),
@@ -1541,7 +1492,7 @@ mod tests {
         );
         
         // Create second dispute (escrow is already disputed, but this should still work)
-        let dispute_id_2 = EscrowTrait::dispute_escrow(
+        let dispute_id_2 = EscrowContract::dispute_escrow(
             env.clone(),
             escrow_id.clone(),
             receiver.clone(),
@@ -1550,7 +1501,7 @@ mod tests {
         );
         
         // Verify both disputes exist
-        let disputes = EscrowTrait::get_disputes_by_escrow(env.clone(), escrow_id.clone());
+        let disputes = EscrowContract::get_disputes_by_escrow(env.clone(), escrow_id.clone());
         assert_eq!(disputes.len(), 2);
         
         // Verify dispute IDs are different

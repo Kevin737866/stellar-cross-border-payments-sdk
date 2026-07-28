@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol, Map, Vec};
+use soroban_sdk::{contractimpl, contracttype, Address, Env, Symbol, Map, Vec};
 
 #[contracttype]
 pub struct ExchangeRate {
@@ -37,34 +37,8 @@ pub struct PathResult {
 
 pub struct RateOracleContract;
 
-#[contract]
-pub trait RateOracleTrait {
-    // ... (keep existing mixed with new)
-    fn submit_rate(
-        env: Env,
-        source: Address,
-        from_currency: Symbol,
-        to_currency: Symbol,
-        rate: u128,
-        confidence: u8,
-    ) -> bool;
-
-    fn get_rate(env: Env, from_currency: Symbol, to_currency: Symbol) -> AggregatedRate;
-
-    fn find_best_path(env: Env, from: Symbol, to: Symbol, amount: i128) -> PathResult;
-
-    fn get_optimal_execution(env: Env, from: Symbol, to: Symbol, amount: i128) -> PathResult;
-
-    fn get_dex_rate(env: Env, from: Symbol, to: Symbol) -> u128;
-    
-    fn add_rate_source(env: Env, name: Symbol, address: Address, weight: u8) -> bool;
-    fn update_rate_source(env: Env, address: Address, weight: u8, active: bool) -> bool;
-    fn get_rate_sources(env: Env) -> Vec<RateSource>;
-    fn set_admin(env: Env, admin: Address);
-}
-
 #[contractimpl]
-impl RateOracleTrait for RateOracleContract {
+impl RateOracleContract {
     fn submit_rate(
         env: Env,
         source: Address,

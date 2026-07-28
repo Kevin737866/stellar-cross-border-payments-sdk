@@ -2,6 +2,7 @@ pub mod anchor;
 pub mod compliance;
 pub mod escrow;
 pub mod rate_oracle;
+mod u8;
 
 pub use anchor::{AnchorInfo, AnchorRegistry, DepositInfo, KycRequirement};
 pub use compliance::{
