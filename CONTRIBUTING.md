@@ -74,6 +74,53 @@ cp .env.example .env
 
 ---
 
+## Repository Structure
+
+```
+stellar-cross-border-payments-sdk/
+├── src/                    # Soroban smart contracts (Rust)
+│   ├── lib.rs              # Contract entry points
+│   └── ...
+├── cli/                    # Command-line tool (TypeScript)
+│   ├── src/
+│   └── package.json
+├── components/            # React UI components
+├── hooks/                  # Custom React hooks
+├── docs/                   # Additional documentation
+├── examples/               # Usage examples
+├── scripts/                # Build and deployment scripts
+├── Cargo.toml              # Rust workspace manifest
+├── package.json            # Node.js workspace root
+└── .env.example            # Environment variable template
+```
+
+### Building and Running Contracts Locally
+
+```bash
+# 1. Build the Soroban contract (produces .wasm)
+cargo build --target wasm32-unknown-unknown --release
+
+# 2. Deploy to testnet
+soroban contract deploy \
+  --wasm-path target/wasm32-unknown-unknown/release/*.wasm \
+  --network testnet
+
+# 3. Initialize the contract
+soroban contract invoke \
+  --id <CONTRACT_ID> \
+  --network testnet \
+  -- initialize \
+  --admin <ADMIN_PUBLIC_KEY>
+
+# 4. Run the CLI locally
+cd cli && npm run dev
+
+# 5. Run the full build (contracts + CLI + UI)
+npm run build:full
+```
+
+---
+
 ## Development Workflow
 
 ```
