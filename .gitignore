@@ -115,3 +115,11 @@ soroban/
 # Pull request drafts
 pull-request*.md
 pr-*.md
+
+# Issue-audit local tooling - the committed deliverables are the five tracked
+# files (README.md, ISSUE_CANDIDATES.md, issues.json, DUPLICATE_REVIEW.md,
+# PRIORITIZED_BACKLOG.md); the generator, validator and data modules are not
+# committed.
+issue-audit/_data/
+issue-audit/generate.mjs
+issue-audit/validate.mjs
