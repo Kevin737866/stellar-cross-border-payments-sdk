@@ -4,8 +4,11 @@ This directory contains a code-grounded audit of
 `Kevin737866/stellar-cross-border-payments-sdk` and a candidate set of **150
 proposed GitHub issues**.
 
-> **No GitHub issues were created.** The `--publish-to-github` mode was not
-> requested, so this run produced and validated local artifacts only.
+> **All 150 candidates have been published** as GitHub issues **#160–#309** on
+> `Kevin737866/stellar-cross-border-payments-sdk`, after the issue and pull
+> request history was re-fetched and the duplicate screen re-run immediately
+> before publication. See `PUBLICATION_MANIFEST.md` for the candidate-to-issue
+> mapping and §9 for the verified counts.
 
 ## Artifacts
 
@@ -15,14 +18,19 @@ proposed GitHub issues**.
 | `issues.json` | Machine-readable array of the same 150 issues. |
 | `DUPLICATE_REVIEW.md` | Screening against the existing 106 issues and 52 pull requests, exclusions, and borderline decisions. |
 | `PRIORITIZED_BACKLOG.md` | Recommended implementation order grouped by wave and dependency. |
-The five files above are the committed deliverables. Three further items are
+| `PUBLICATION_MANIFEST.md` | The publication record: each candidate mapped to the GitHub issue it became, with the labels applied and the duplicate-screening note. |
+| `publication-manifest.json` | The same record, machine-readable. |
+
+All of the files above are committed deliverables. Four further items are
 local build tooling and are **excluded from version control** via `.gitignore`
-(`issue-audit/_data/`, `issue-audit/generate.mjs`, `issue-audit/validate.mjs`):
+(`issue-audit/_data/`, `issue-audit/generate.mjs`, `issue-audit/validate.mjs`,
+`issue-audit/publish.mjs`):
 
 | Local-only file (not committed) | Purpose |
 |---|---|
 | `generate.mjs` | Regenerates `ISSUE_CANDIDATES.md`, `issues.json`, and `PRIORITIZED_BACKLOG.md` from `_data/`. |
 | `validate.mjs` | Automated validation of the artifacts (Phase 8 checks). |
+| `publish.mjs` | Guarded GitHub publication: confirms the target repository, re-fetches and re-screens against live history, writes the manifest before submitting, applies only pre-existing labels, backs off on rate limits, and resumes without re-creating. |
 | `_data/*.mjs` | The candidate records in eight themed modules, from which the deliverables are generated. |
 
 In a working copy that still has the tooling present, regenerate and validate
@@ -254,5 +262,29 @@ Recorded result of the final run: **all validation checks passed**, exit status
 were fixed rather than suppressed: three candidates used an unsupported type
 value (`performance`) and one had only two acceptance criteria.
 
-No GitHub issue was created, so the publication count is **zero** and no
-publication manifest exists.
+---
+
+## 9. Publication
+
+Every candidate was created as a GitHub issue: **150 of 150**, spanning the
+contiguous range **#160–#309**. Failed: 0. Skipped as duplicates: 0.
+
+- The live issue and PR history was re-fetched immediately before publication
+  (106 issues, 52 pull requests at the time) and the duplicate screen re-run.
+  No candidate title matched an existing issue or PR exactly, and none reached
+  the 0.9 semantic-similarity threshold.
+- Labels were applied only from labels that already existed in the repository:
+  `bug` for the `bug` and `security` types, `enhancement` for `feature` and
+  `enhancement`, `documentation` for `documentation`. No label was created, and
+  no candidate was labelled `Stellar Wave`, whose meaning is a program decision
+  rather than a property of a candidate.
+- Each created issue carries a metadata block (Category, Type, Priority, Effort,
+  Evidence type, Evidence paths) followed by the eight mandatory sections and a
+  provenance line back to this audit.
+- Verified independently of the publisher: all 150 titles match the candidate
+  set exactly, the issue numbers are contiguous, and the sampled issues carry
+  the expected labels and all eight sections. The repository issue count moved
+  from 106 to 256 (3 → 153 open, 103 closed).
+
+`PUBLICATION_MANIFEST.md` records, per candidate, the issue number and URL it
+became, the labels applied, and the duplicate-screening note.

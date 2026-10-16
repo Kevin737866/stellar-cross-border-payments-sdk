@@ -1,0 +1,2032 @@
+{
+  "repo": "Kevin737866/stellar-cross-border-payments-sdk",
+  "updated_at": "2026-10-16T15:28:41.076Z",
+  "total_candidates": 150,
+  "planned": 150,
+  "created": 150,
+  "skipped_duplicate": 0,
+  "failed": 0,
+  "remaining": 0,
+  "records": [
+    {
+      "candidate_id": "CAND-001",
+      "title": "Fix the undefined evaluate_rule call that prevents the compliance contract from compiling",
+      "priority": "P0",
+      "category": "contracts",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 160,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/160",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-002",
+      "title": "Remove the cfg(not(test)) module gate so contract tests compile and run",
+      "priority": "P1",
+      "category": "contracts",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 161,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/161",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-003",
+      "title": "Require authentication in RateOracleContract::set_admin",
+      "priority": "P0",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 162,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/162",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-004",
+      "title": "Add a unique nonce to the escrow-id derivation so two identical escrows cannot collide",
+      "priority": "P0",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 163,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/163",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-005",
+      "title": "Timestamp and prune rate submissions so stale rates cannot skew aggregation",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 164,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/164",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-006",
+      "title": "Enforce the configured deviation_threshold as an outlier circuit breaker",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 165,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/165",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-007",
+      "title": "Stop silently retaining the previous aggregate when a zero-confidence submission arrives",
+      "priority": "P1",
+      "category": "contracts",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 166,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/166",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-008",
+      "title": "Fix mixed currency and source indexing in RateOracleContract::add_rate_source",
+      "priority": "P1",
+      "category": "contracts",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 167,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/167",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-009",
+      "title": "Remove the fabricated 1% markup from RateOracleContract::get_dex_rate",
+      "priority": "P1",
+      "category": "contracts",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 168,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/168",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-010",
+      "title": "Guard find_best_path against integer overflow when compounding rates",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 169,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/169",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-011",
+      "title": "Resolve the release/refund race that exists once release_time has passed",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 170,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/170",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-012",
+      "title": "Store each escrow and dispute under its own key instead of one ever-growing map",
+      "priority": "P1",
+      "category": "contracts",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 171,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/171",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-013",
+      "title": "Extend TTL for escrow persistent entries so live funds cannot be archived",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 172,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/172",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-014",
+      "title": "Emit contract events for escrow lifecycle transitions",
+      "priority": "P2",
+      "category": "contracts",
+      "labels": [
+        "enhancement"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 173,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/173",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-015",
+      "title": "Cap escrow metadata map size and value length before storing it",
+      "priority": "P2",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 174,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/174",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-016",
+      "title": "Bound dispute evidence size and store a hash instead of unbounded bytes",
+      "priority": "P2",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 175,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/175",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-017",
+      "title": "Add require_auth to every admin-gated entry point in the anchor registry",
+      "priority": "P0",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 176,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/176",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-018",
+      "title": "Replace the non-no_std format! usage in AnchorRegistry::get_deposit_url",
+      "priority": "P1",
+      "category": "contracts",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 177,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/177",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-019",
+      "title": "Return an explicit error instead of a random address from get_best_anchor",
+      "priority": "P2",
+      "category": "contracts",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 178,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/178",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-020",
+      "title": "Enforce KYC level minimums in check_transaction_compliance",
+      "priority": "P1",
+      "category": "contracts",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 179,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/179",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-021",
+      "title": "Apply transaction limits to the receiver as well as the sender",
+      "priority": "P1",
+      "category": "contracts",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 180,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/180",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-022",
+      "title": "Bound the on-chain compliance history and expose paginated access",
+      "priority": "P1",
+      "category": "performance",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 181,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/181",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-023",
+      "title": "Make compliance decisions idempotent per transaction id to prevent replay",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 182,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/182",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-024",
+      "title": "Unify the integer width of confidence, priority, and trust_score across contracts",
+      "priority": "P2",
+      "category": "contracts",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 183,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/183",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-025",
+      "title": "Add a two-step administrator rotation path and an emergency pause to the escrow contract",
+      "priority": "P2",
+      "category": "security",
+      "labels": [
+        "enhancement"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 184,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/184",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-026",
+      "title": "Sign the transaction before submitting in StellarPayments.createPayment",
+      "priority": "P0",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 185,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/185",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-027",
+      "title": "Prepare the Soroban invocation in createPayment before submitting",
+      "priority": "P0",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 186,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/186",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-028",
+      "title": "Send Horizon transaction submissions form-encoded in StellarClient.submitTransaction",
+      "priority": "P0",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 187,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/187",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-029",
+      "title": "Stop reporting PENDING Soroban submissions as confirmed",
+      "priority": "P0",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 188,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/188",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-030",
+      "title": "Poll the Soroban RPC for transaction finality instead of Horizon",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 189,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/189",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-031",
+      "title": "Introduce an explicit amount type and stop passing raw strings to ScInt",
+      "priority": "P0",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 190,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/190",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-032",
+      "title": "Fix toScValOption to use the native Soroban Option encoding",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 191,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/191",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-033",
+      "title": "Collapse the two divergent metadata-to-SCVal implementations into one",
+      "priority": "P2",
+      "category": "sdk",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 192,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/192",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-034",
+      "title": "Align the SDK metadata SCVal shape with the contract Map<Symbol, Vec<u8>>",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 193,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/193",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-035",
+      "title": "Read escrow records through the contract storage key layout in getEscrow",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 194,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/194",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-036",
+      "title": "Read aggregated rates through the contract storage layout in getExchangeRate",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 195,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/195",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-037",
+      "title": "Fix the getUserEscrows key construction and symbol length limit",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 196,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/196",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-038",
+      "title": "Implement or remove the stubbed getRateSources from the SDK public surface",
+      "priority": "P2",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 197,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/197",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-039",
+      "title": "Make can_refund in getPaymentStatus reflect the contract time-lock rule",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 198,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/198",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-040",
+      "title": "Generate compliance transaction ids with a cryptographically secure source",
+      "priority": "P2",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 199,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/199",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-041",
+      "title": "Build an actual fee-bump transaction when the feeBump option is set",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "enhancement"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 200,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/200",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-042",
+      "title": "Derive fee estimates from network fee statistics instead of BASE_FEE",
+      "priority": "P2",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 201,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/201",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-043",
+      "title": "Add duplicate-submission protection and a documented retry policy to the submission helpers",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 202,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/202",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-044",
+      "title": "Require finite timebounds instead of defaulting to TimeoutInfinite",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 203,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/203",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-045",
+      "title": "Make the SDK browser-safe by removing the Node EventEmitter dependency from the barrel",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 204,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/204",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-046",
+      "title": "Validate network and endpoint consistency in the StellarClient constructor",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 205,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/205",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-047",
+      "title": "Honour per-asset decimals in formatAmount and parseAmount",
+      "priority": "P1",
+      "category": "sdk",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 206,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/206",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-048",
+      "title": "Unify the error contract across StellarPayments methods",
+      "priority": "P2",
+      "category": "sdk",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 207,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/207",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-049",
+      "title": "Expose dispute resolution through the SDK",
+      "priority": "P2",
+      "category": "sdk",
+      "labels": [
+        "enhancement"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 208,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/208",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-050",
+      "title": "Re-export the Stellar primitives the examples and consumers import from the SDK",
+      "priority": "P2",
+      "category": "sdk",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 209,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/209",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-051",
+      "title": "Fix the undefined sourcePublicKey and out-of-scope sourceKeypair in executeBatch",
+      "priority": "P0",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 210,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/210",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-052",
+      "title": "Remove the duplicate envDefault declarations in the CLI entry point",
+      "priority": "P0",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 211,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/211",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-053",
+      "title": "Fix the npm-incompatible workspace dependency in ui/package.json",
+      "priority": "P0",
+      "category": "ci-cd",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 212,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/212",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-054",
+      "title": "Make the mainnet network selection choose mainnet Horizon and passphrase",
+      "priority": "P0",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 213,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/213",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-055",
+      "title": "Stop re-submitting entries in the submitted state during batch resume",
+      "priority": "P0",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 214,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/214",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-056",
+      "title": "Reconcile uncertain submissions against Horizon before retrying",
+      "priority": "P0",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 215,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/215",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-057",
+      "title": "Fix the trustline check that passes for any account holding XLM",
+      "priority": "P0",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 216,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/216",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-058",
+      "title": "Reject non-finite and over-precision amounts in batch validation",
+      "priority": "P1",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 217,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/217",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-059",
+      "title": "Never silently substitute the source account as the asset issuer",
+      "priority": "P0",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 218,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/218",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-060",
+      "title": "Fix the sequence allocator off-by-one in executeBatch",
+      "priority": "P1",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 219,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/219",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-061",
+      "title": "Preserve every row memo instead of only the first row in a group",
+      "priority": "P1",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 220,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/220",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-062",
+      "title": "Integrate escrow duration and the contract addresses into batch submission",
+      "priority": "P1",
+      "category": "cli",
+      "labels": [
+        "enhancement"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 221,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/221",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-063",
+      "title": "Add an explicit confirmation gate before mainnet batch execution",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 222,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/222",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-064",
+      "title": "Set finite timebounds on CLI batch and retry transactions",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 223,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/223",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-065",
+      "title": "Require operator opt-in before automatically resuming stale batches",
+      "priority": "P1",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 224,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/224",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-066",
+      "title": "Add a unique entry constraint and enable foreign keys in the batch database",
+      "priority": "P1",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 225,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/225",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-067",
+      "title": "Add a busy timeout and schema versioning to the batch database",
+      "priority": "P2",
+      "category": "cli",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 226,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/226",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-068",
+      "title": "Fail closed when the fee-surge check cannot reach Horizon",
+      "priority": "P2",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 227,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/227",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-069",
+      "title": "Validate numeric CLI option bounds at startup",
+      "priority": "P2",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 228,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/228",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-070",
+      "title": "Stop marking dry-run entries confirmed with fabricated hashes",
+      "priority": "P2",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 229,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/229",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-071",
+      "title": "Implement or disable the escrow release, refund and dispute action buttons",
+      "priority": "P1",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 230,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/230",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-072",
+      "title": "Run the compliance check before creating a payment in PaymentForm",
+      "priority": "P1",
+      "category": "ui",
+      "labels": [
+        "enhancement"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 231,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/231",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-073",
+      "title": "Unify the custom-asset sentinel between PaymentForm and validatePaymentForm",
+      "priority": "P1",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 232,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/232",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-074",
+      "title": "Pass resolved token contract addresses instead of display symbols to createPayment",
+      "priority": "P0",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 233,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/233",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-075",
+      "title": "Replace the randomised trend indicator in ExchangeRateDisplay",
+      "priority": "P1",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 234,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/234",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-076",
+      "title": "Fix the Confidence card that displays the deviation threshold",
+      "priority": "P2",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 235,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/235",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-077",
+      "title": "Use exact decimal arithmetic for rate and amount conversion in the UI",
+      "priority": "P1",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 236,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/236",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-078",
+      "title": "Guard against stale responses when the currency pair changes",
+      "priority": "P1",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 237,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/237",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-079",
+      "title": "Stop toggling global loading state during background polling in useStellarPayment",
+      "priority": "P2",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 238,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/238",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-080",
+      "title": "Handle initial-load failures without unhandled promise rejections in useStellarPayment",
+      "priority": "P2",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 239,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/239",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-081",
+      "title": "Validate refreshInterval to prevent a tight polling loop",
+      "priority": "P3",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 240,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/240",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-082",
+      "title": "Validate custom asset code and issuer in validatePaymentForm",
+      "priority": "P2",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 241,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/241",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-083",
+      "title": "Correct the displayed escrow amount so it matches the settled value",
+      "priority": "P1",
+      "category": "ui",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 242,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/242",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-084",
+      "title": "Add accessible status announcements and non-colour state to escrow and rate components",
+      "priority": "P2",
+      "category": "ui",
+      "labels": [
+        "enhancement"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 243,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/243",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-085",
+      "title": "Add an error boundary around the payment components",
+      "priority": "P2",
+      "category": "ui",
+      "labels": [
+        "enhancement"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 244,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/244",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-086",
+      "title": "Make the escrow contract test suite actually execute",
+      "priority": "P1",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 245,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/245",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-087",
+      "title": "Replace the undefined ComplianceTrait test harness in compliance.rs",
+      "priority": "P1",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 246,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/246",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-088",
+      "title": "Type-check test files instead of disabling diagnostics",
+      "priority": "P1",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 247,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/247",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-089",
+      "title": "Add tests for the CLI batch submission pipeline",
+      "priority": "P1",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 248,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/248",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-090",
+      "title": "Add tests for CLI batch validation and fee-surge handling",
+      "priority": "P1",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 249,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/249",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-091",
+      "title": "Add tests for the CLI retry command",
+      "priority": "P1",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 250,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/250",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-092",
+      "title": "Add tests for the CLI status command and its streaming mode",
+      "priority": "P2",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 251,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/251",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-093",
+      "title": "Add tests for the SDK address validation helpers",
+      "priority": "P2",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 252,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/252",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-094",
+      "title": "Add tests for the SDK event emitter and facade",
+      "priority": "P2",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 253,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/253",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-095",
+      "title": "Add tests for SDK SCVal conversion and contract return parsing",
+      "priority": "P1",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 254,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/254",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-096",
+      "title": "Add tests for the useStellarPayment hook",
+      "priority": "P2",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 255,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/255",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-097",
+      "title": "Add tests for the EscrowStatus component",
+      "priority": "P2",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 256,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/256",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-098",
+      "title": "Add tests for validatePaymentForm",
+      "priority": "P2",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 257,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/257",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-099",
+      "title": "Add an end-to-end batch test against a mocked Horizon",
+      "priority": "P1",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 258,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/258",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-100",
+      "title": "Add property-based tests for parsers and amount handling",
+      "priority": "P2",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 259,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/259",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-101",
+      "title": "Stop writing full Horizon error bodies to CLI logs",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 260,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/260",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-102",
+      "title": "Make the secret-handling guarantees enforceable rather than aspirational",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 261,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/261",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-103",
+      "title": "Add a secret-scanning job to CI",
+      "priority": "P2",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 262,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/262",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-104",
+      "title": "Provide a SECURITY.md disclosure policy",
+      "priority": "P2",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 263,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/263",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-105",
+      "title": "Ignore SQLite write-ahead and shared-memory sidecar files",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 264,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/264",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-106",
+      "title": "Add PII controls for CLI stdout and generated reports",
+      "priority": "P2",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 265,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/265",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-107",
+      "title": "Make compliance a precondition of escrow execution rather than an advisory check",
+      "priority": "P1",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 266,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/266",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-108",
+      "title": "Define a retention policy for on-chain compliance history",
+      "priority": "P2",
+      "category": "compliance",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 267,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/267",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-109",
+      "title": "Document the compliance decision model, reasons, and fail-closed semantics",
+      "priority": "P2",
+      "category": "compliance",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 268,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/268",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-110",
+      "title": "Keep signing key material out of the browser-adjacent UI package",
+      "priority": "P2",
+      "category": "security",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 269,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/269",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-111",
+      "title": "Fix the contract build scripts to point at the real crate manifest",
+      "priority": "P0",
+      "category": "ci-cd",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 270,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/270",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-112",
+      "title": "Make CI fail when a contract module does not compile",
+      "priority": "P1",
+      "category": "ci-cd",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 271,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/271",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-113",
+      "title": "Pin CI toolchains and add dependency vulnerability scanning",
+      "priority": "P2",
+      "category": "ci-cd",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 272,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/272",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-114",
+      "title": "Add coverage reporting and enforce a minimum threshold",
+      "priority": "P2",
+      "category": "ci-cd",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 273,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/273",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-115",
+      "title": "Consolidate the four lockfiles into a single root lockfile",
+      "priority": "P2",
+      "category": "ci-cd",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 274,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/274",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-116",
+      "title": "Publish proper export metadata and a browser-safe entry point for the SDK package",
+      "priority": "P2",
+      "category": "ci-cd",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 275,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/275",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-117",
+      "title": "Prevent accidental publication of the SDK and CLI packages with workspace-only dependencies",
+      "priority": "P2",
+      "category": "ci-cd",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 276,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/276",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-118",
+      "title": "Automate the documented release process",
+      "priority": "P2",
+      "category": "ci-cd",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 277,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/277",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-119",
+      "title": "Add a CI job that builds and runs the examples",
+      "priority": "P2",
+      "category": "ci-cd",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 278,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/278",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-120",
+      "title": "Test the Node.js versions the project actually targets",
+      "priority": "P3",
+      "category": "ci-cd",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 279,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/279",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-121",
+      "title": "Document or implement validatePaymentRequest and the branded address and amount types",
+      "priority": "P1",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 280,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/280",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-122",
+      "title": "Correct the README architecture tree and component locations",
+      "priority": "P2",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 281,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/281",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-123",
+      "title": "Correct the README claims about fee bump and escrow in the CLI",
+      "priority": "P1",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 282,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/282",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-124",
+      "title": "Fix the clone and compare URLs that point at a different organisation",
+      "priority": "P2",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 283,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/283",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-125",
+      "title": "Rewrite the deployment guide so its instructions can succeed",
+      "priority": "P1",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 284,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/284",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-126",
+      "title": "Reconcile the documented npm scripts with the defined ones",
+      "priority": "P2",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 285,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/285",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-127",
+      "title": "Correct the performance document benchmark names and unverifiable figures",
+      "priority": "P2",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 286,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/286",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-128",
+      "title": "Add per-package READMEs and generated API reference documentation",
+      "priority": "P2",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 287,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/287",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-129",
+      "title": "Fix the examples so they run against the documented commands",
+      "priority": "P2",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 288,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/288",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-130",
+      "title": "Add an operational runbook for incidents, stuck batches and key rotation",
+      "priority": "P2",
+      "category": "documentation",
+      "labels": [
+        "documentation"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 289,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/289",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-131",
+      "title": "Stop recomputing the full submission history on every rate submission",
+      "priority": "P1",
+      "category": "performance",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 290,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/290",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-132",
+      "title": "Extend TTL for rate-oracle persistent entries",
+      "priority": "P1",
+      "category": "maintenance",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 291,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/291",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-133",
+      "title": "Replace full-collection scans in contract read paths with indexed lookups",
+      "priority": "P2",
+      "category": "performance",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 292,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/292",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-134",
+      "title": "Add structured logging with a configurable level to the CLI",
+      "priority": "P2",
+      "category": "observability",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 293,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/293",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-135",
+      "title": "Emit batch progress and outcome metrics",
+      "priority": "P2",
+      "category": "observability",
+      "labels": [
+        "enhancement"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 294,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/294",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-136",
+      "title": "Remove the orphaned root components, hooks and utils directories",
+      "priority": "P2",
+      "category": "maintenance",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 295,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/295",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-137",
+      "title": "Remove the unrelated instructor-onboarding form code and its undeclared dependency",
+      "priority": "P2",
+      "category": "maintenance",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 296,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/296",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-138",
+      "title": "De-duplicate the Stellar dependency set across packages",
+      "priority": "P2",
+      "category": "maintenance",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 297,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/297",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-139",
+      "title": "Delete the stray dotless gitignore file at the repository root",
+      "priority": "P3",
+      "category": "maintenance",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 298,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/298",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-140",
+      "title": "Add CODEOWNERS and pull request and issue templates",
+      "priority": "P3",
+      "category": "maintenance",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 299,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/299",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-141",
+      "title": "Preserve exact decimal values when parsing XLSX amount cells",
+      "priority": "P1",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 300,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/300",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-142",
+      "title": "Reject exponent-notation and non-finite amounts in the JSON parser",
+      "priority": "P1",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 301,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/301",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-143",
+      "title": "Make CSV header detection robust to byte-order marks, CRLF, and quoted headers",
+      "priority": "P2",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 302,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/302",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-144",
+      "title": "Surface MT103 messages that are silently skipped",
+      "priority": "P1",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 303,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/303",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-145",
+      "title": "Restrict MT103 field 32A amount parsing to a documented grammar",
+      "priority": "P2",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 304,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/304",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-146",
+      "title": "Record filtered-out rows as skipped entries so the audit trail is complete",
+      "priority": "P1",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 305,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/305",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-147",
+      "title": "Make the CLI exit non-zero when a batch completes with failures",
+      "priority": "P2",
+      "category": "cli",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 306,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/306",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-148",
+      "title": "Pin one shared validation rule set across the UI, CLI, and SDK",
+      "priority": "P2",
+      "category": "maintenance",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 307,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/307",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-149",
+      "title": "Add a contract integration test that exercises real token transfers",
+      "priority": "P1",
+      "category": "testing",
+      "labels": [],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 308,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/308",
+      "error": null
+    },
+    {
+      "candidate_id": "CAND-150",
+      "title": "Add negative-path authorization tests for every admin-gated contract entry point",
+      "priority": "P1",
+      "category": "testing",
+      "labels": [
+        "bug"
+      ],
+      "status": "created",
+      "duplicate_note": "no close match",
+      "issue_number": 309,
+      "url": "https://github.com/Kevin737866/stellar-cross-border-payments-sdk/issues/309",
+      "error": null
+    }
+  ]
+}
