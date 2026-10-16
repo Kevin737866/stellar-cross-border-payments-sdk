@@ -116,10 +116,9 @@ soroban/
 pull-request*.md
 pr-*.md
 
-# Issue-audit local tooling - the committed deliverables are the tracked
-# artifacts (README.md, ISSUE_CANDIDATES.md, issues.json, DUPLICATE_REVIEW.md,
-# PRIORITIZED_BACKLOG.md, PUBLICATION_MANIFEST.md); the generator, validator,
-# publisher and data modules are not committed.
+# Issue-audit local tooling - the analysis, the candidate set and the
+# publication manifest are committed deliverables; the generator, validator,
+# publisher and the candidate data modules that feed them are not.
 issue-audit/_data/
 issue-audit/generate.mjs
 issue-audit/validate.mjs
